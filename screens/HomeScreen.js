@@ -1,10 +1,17 @@
 // screens/HomeScreen.js
-import React from "react";
+import React, { useEffect } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { signOut } from "firebase/auth";
 import { auth } from "../firebaseConfig";
 
 export default function HomeScreen({ navigation }) {
+  useEffect(() => {
+    // If user is logged in, immediately redirect to EventsList
+    if (auth.currentUser) {
+      navigation.navigate('EventsList');
+    }
+  }, []);
+
   const handleLogout = async () => {
     try {
       await signOut(auth);

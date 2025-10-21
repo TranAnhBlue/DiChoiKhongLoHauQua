@@ -16,12 +16,13 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { signOut } from "firebase/auth";
 
-export default function ProfileScreen({ navigation }) {
+export default function ProfileScreen({ navigation, route }) {
   const uid = auth.currentUser?.uid;
   const [profile, setProfile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(true);
+  const [editing, setEditing] = useState(false);
 
   // Load profile info
   useEffect(() => {
@@ -46,6 +47,15 @@ export default function ProfileScreen({ navigation }) {
     };
     load();
   }, [uid]);
+
+  // handle route param 'edit' to enter edit mode from header button
+  useEffect(() => {
+    if (route?.params?.edit) {
+      setEditing(true);
+      // clear param so re-entering doesn't automatically set it again
+      navigation.setParams({ edit: false });
+    }
+  }, [route?.params]);
 
   // Pick + upload avatar
   const pickImageAndUpload = async () => {
@@ -127,6 +137,16 @@ export default function ProfileScreen({ navigation }) {
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>Thông tin cá nhân</Text>
 
+      {editing ? (
+        <TouchableOpacity style={{ alignSelf: 'flex-end', marginBottom: 8 }} onPress={() => setEditing(false)}>
+          <Text style={{ color: '#8E2DE2' }}>Hủy</Text>
+        </TouchableOpacity>
+      ) : (
+        <TouchableOpacity style={{ alignSelf: 'flex-end', marginBottom: 8 }} onPress={() => setEditing(true)}>
+          <Text style={{ color: '#8E2DE2' }}>Chỉnh sửa</Text>
+        </TouchableOpacity>
+      )}
+
       {/* Avatar */}
       <View style={styles.avatarWrap}>
         {profile?.avatar ? (
@@ -157,6 +177,7 @@ export default function ProfileScreen({ navigation }) {
           style={styles.input}
           placeholder="Nhập họ tên..."
           value={profile?.displayName || ""}
+          editable={editing}
           onChangeText={(t) => setProfile({ ...profile, displayName: t })}
         />
 
@@ -166,6 +187,7 @@ export default function ProfileScreen({ navigation }) {
           placeholder="Nhập số điện thoại..."
           keyboardType="phone-pad"
           value={profile?.phone || ""}
+          editable={editing}
           onChangeText={(t) => setProfile({ ...profile, phone: t })}
         />
 
@@ -175,16 +197,19 @@ export default function ProfileScreen({ navigation }) {
           multiline
           placeholder="Mô tả ngắn về bạn..."
           value={profile?.bio || ""}
+          editable={editing}
           onChangeText={(t) => setProfile({ ...profile, bio: t })}
         />
 
-        <TouchableOpacity
-          style={[styles.btnPrimary, saving && { opacity: 0.7 }]}
-          onPress={handleSave}
-          disabled={saving}
-        >
-          <Text style={styles.btnText}>{saving ? "Đang lưu..." : "💾 Lưu thay đổi"}</Text>
-        </TouchableOpacity>
+        {editing ? (
+          <TouchableOpacity
+            style={[styles.btnPrimary, saving && { opacity: 0.7 }]}
+            onPress={handleSave}
+            disabled={saving}
+          >
+            <Text style={styles.btnText}>{saving ? "Đang lưu..." : "💾 Lưu thay đổi"}</Text>
+          </TouchableOpacity>
+        ) : null}
 
         <TouchableOpacity style={styles.btnLogout} onPress={handleLogout}>
           <Text style={styles.btnLogoutText}>🚪 Đăng xuất</Text>

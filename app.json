@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "eager-indigo-fudge",
-    "slug": "snack-22de9423-9017-47a3-b06e-bea5dab6233f",
+    "name": "Event Finder App",
+    "slug": "event-finder-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -13,9 +13,11 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.dichoikhong"
     },
     "android": {
+      "package": "com.dichoikhong",      
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"

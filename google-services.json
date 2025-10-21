@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "902831259261",
+    "project_id": "event-finder-app-3331f",
+    "storage_bucket": "event-finder-app-3331f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:902831259261:android:9f46331ec4a07c479bfb14",
+        "android_client_info": {
+          "package_name": "com.dichoikhong"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1046501644391-r0f2n6grbv6hlhu9mdoptm7j52csgj1j.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBTdLMPR96jQtx6qvoxm2fwrmvFSJnM84E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1046501644391-r0f2n6grbv6hlhu9mdoptm7j52csgj1j.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

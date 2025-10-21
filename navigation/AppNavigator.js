@@ -9,8 +9,9 @@ import { ActivityIndicator, View, Text } from "react-native";
 import LoginScreen from "../screens/LoginScreen";
 import RegisterScreen from "../screens/RegisterScreen";
 import ForgotPasswordScreen from "../screens/ForgotPasswordScreen";
-import HomeScreen from "../screens/HomeScreen";
-import ProfileScreen from "../screens/ProfileScreen";
+// HomeScreen removed from navigator (we use MainTabs)
+import MainTabs from './MainTabs';
+import EventDetailScreen from "../screens/EventDetailScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -40,8 +41,8 @@ export default function AppNavigator() {
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {user ? (
           <>
-            <Stack.Screen name="Home" component={HomeScreen} />
-            <Stack.Screen name="Profile" component={ProfileScreen} />
+            <Stack.Screen name="Main" component={MainTabs} />
+            <Stack.Screen name="EventDetail" component={EventDetailScreen} />
           </>
         ) : (
           <>
