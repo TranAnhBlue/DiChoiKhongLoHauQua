@@ -95,7 +95,8 @@ export default function MapScreen({ navigation, route }) {
   // respond to route param changes (e.g., navigating from EventsList -> Map while Map is mounted)
   useEffect(() => {
     const c = route?.params?.center;
-    const focusId = route?.params?.focusEventId;
+  const focusId = route?.params?.focusEventId;
+  const focusLocation = route?.params?.focusLocation;
     if (!c) return;
     const intended = { latitude: c.latitude, longitude: c.longitude, latitudeDelta: 0.03, longitudeDelta: 0.03 };
     setRegion(intended);
@@ -108,27 +109,41 @@ export default function MapScreen({ navigation, route }) {
     (async () => {
       try {
         const nearby = await fetchNearby(intended);
+        // build a current events array and then set it once (reduce nested callbacks)
+        let current = Array.isArray(nearby) ? nearby.slice() : [];
+
         if (focusId) {
-          // if the focused event isn't in nearby, try fetching it directly and add it
-          const found = nearby.find((ev) => ev.id === focusId);
-          if (!found) {
-            const ev = await getEventById(focusId);
-            if (ev && ev.location?.lat != null && ev.location?.lng != null) {
-              // attach a large distance to show it separately if needed
-              ev.distanceMeters = ev.distanceMeters ?? 0;
-              nearby.unshift(ev);
-              setEvents((prev) => {
-                // avoid duplicate ids
-                const others = prev.filter((p) => p.id !== ev.id);
-                return [ev, ...others];
-              });
-            }
+          const found = current.find((ev) => ev.id === focusId);
+          if (found) {
+            // focused event already present in nearby
+            setEvents(current);
           } else {
-            setEvents(nearby);
+            // try fetching the focused event directly and prepend it
+            const ev = await getEventById(focusId);
+            if (ev?.location?.lat != null && ev?.location?.lng != null) {
+              ev.distanceMeters = ev.distanceMeters ?? 0;
+              // avoid duplicates
+              current = [ev, ...current.filter((x) => x.id !== ev.id)];
+              setEvents(current);
+            } else {
+              // fallback: just set nearby
+              setEvents(current);
+            }
           }
           setFocusedEventId(focusId);
         } else {
-          setEvents(nearby);
+          // no focusEventId: set nearby, and optionally add a temporary marker for focusLocation
+          if (focusLocation?.lat != null && focusLocation?.lng != null) {
+            const tmp = {
+              id: `focus_loc_${focusLocation.lat}_${focusLocation.lng}`,
+              title: focusLocation.title || 'Vị trí',
+              location: { lat: focusLocation.lat, lng: focusLocation.lng },
+              _temporary: true,
+            };
+            current = [tmp, ...current.filter((x) => x.id !== tmp.id)];
+            setFocusedEventId(tmp.id);
+          }
+          setEvents(current);
         }
       } catch (error_) {
         console.log('fetchNearby (route update) error', error_);
@@ -161,7 +176,7 @@ export default function MapScreen({ navigation, route }) {
         {events.map((e) => (
             <Marker
               key={e.id}
-              pinColor={e.id === focusedEventId ? '#FFA500' : undefined}
+              pinColor={e.id === focusedEventId ? '#d11010ff' : undefined}
               coordinate={{ latitude: e.location.lat, longitude: e.location.lng }}
               title={e.title}
               description={e.category}
@@ -225,6 +240,7 @@ MapScreen.propTypes = {
     params: PropTypes.shape({
       center: PropTypes.shape({ latitude: PropTypes.number, longitude: PropTypes.number }),
       focusEventId: PropTypes.string,
+      focusLocation: PropTypes.shape({ lat: PropTypes.number, lng: PropTypes.number, title: PropTypes.string }),
     }),
   }),
 };
