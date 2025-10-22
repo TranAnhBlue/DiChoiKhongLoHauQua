@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import PropTypes from 'prop-types';
 import {
   View,
   Text,
@@ -15,6 +16,7 @@ import { auth, storage, db } from "../firebaseConfig";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { signOut } from "firebase/auth";
+import { createEvent } from '../services/events';
 
 export default function ProfileScreen({ navigation, route }) {
   const uid = auth.currentUser?.uid;
@@ -53,7 +55,7 @@ export default function ProfileScreen({ navigation, route }) {
     if (route?.params?.edit) {
       setEditing(true);
       // clear param so re-entering doesn't automatically set it again
-      navigation.setParams({ edit: false });
+      if (navigation && typeof navigation.setParams === 'function') navigation.setParams({ edit: false });
     }
   }, [route?.params]);
 
@@ -82,8 +84,8 @@ export default function ProfileScreen({ navigation, route }) {
       await uploadBytes(fileRef, blob);
       const downloadURL = await getDownloadURL(fileRef);
 
-      await updateDoc(doc(db, "users", uid), { avatar: downloadURL });
-      setProfile((p) => ({ ...(p || {}), avatar: downloadURL }));
+  await updateDoc(doc(db, "users", uid), { avatar: downloadURL });
+  setProfile((p) => (p ? { ...p, avatar: downloadURL } : { avatar: downloadURL }));
 
       Alert.alert("✅ Thành công", "Ảnh đại diện đã được cập nhật.");
     } catch (error) {
@@ -115,11 +117,82 @@ export default function ProfileScreen({ navigation, route }) {
   };
 
   // Logout
+  const seedDemoEvents = async () => {
+    try {
+      // Using the provided event data
+      await createEvent({
+        title: 'Hội chợ Ẩm thực Nhật Bản',
+        description: 'Thưởng thức món ăn Nhật truyền thống, sushi và ramen tại Crescent Mall.',
+        category: 'Ẩm thực',
+        latitude: 10.7302,
+        longitude: 106.7215,
+        startAt: '2025-10-25T17:00:00',
+        endAt: null,
+        imageUrl: 'https://i.imgur.com/Nik6mU8.jpg',
+        createdBy: 'demoUser',
+      });
+
+      await createEvent({
+        title: 'Lễ hội Âm nhạc ngoài trời Chill Fest',
+        description: 'Âm nhạc, đồ ăn và không khí sôi động tại Công viên Gia Định.',
+        category: 'Âm nhạc',
+        latitude: 10.8173,
+        longitude: 106.677,
+        startAt: '2025-10-27T18:30:00',
+        endAt: null,
+        imageUrl: 'https://i.imgur.com/4H9HY9s.jpg',
+        createdBy: 'demoUser',
+      });
+
+      await createEvent({
+        title: "Chiếu phim ngoài trời – 'Your Name'",
+        description: 'Rạp chiếu ngoài trời tại Thảo Cầm Viên, mang theo ghế hoặc mền để ngồi xem.',
+        category: 'Phim ảnh',
+        latitude: 10.7883,
+        longitude: 106.7058,
+        startAt: '2025-10-20T19:00:00',
+        endAt: null,
+        imageUrl: 'https://i.imgur.com/IaYcGKu.jpg',
+        createdBy: 'demoUser',
+      });
+
+      await createEvent({
+        title: 'Workshop Làm nến thơm',
+        description: 'Trải nghiệm tự tay làm nến thơm với hương tinh dầu tự nhiên.',
+        category: 'Thủ công',
+        latitude: 10.7629,
+        longitude: 106.6822,
+        startAt: '2025-10-22T14:00:00',
+        endAt: null,
+        imageUrl: 'https://i.imgur.com/ijTMoZJ.jpg',
+        createdBy: 'demoUser',
+      });
+
+      await createEvent({
+        title: 'Triển lãm Nghệ thuật Trẻ 2025',
+        description: 'Không gian triển lãm tác phẩm hội họa và sắp đặt của các nghệ sĩ trẻ Việt Nam.',
+        category: 'Nghệ thuật',
+        latitude: 10.7781,
+        longitude: 106.6956,
+        startAt: '2025-10-24T09:00:00',
+        endAt: null,
+        imageUrl: 'https://i.imgur.com/XwoRfva.jpg',
+        createdBy: 'demoUser',
+      });
+
+      Alert.alert('Đã tạo', '5 event demo đã được thêm vào Firestore.');
+    } catch (err) {
+      console.log('Seed error', err);
+      Alert.alert('Lỗi', 'Không thể tạo event demo.');
+    }
+  };
+
   const handleLogout = async () => {
     try {
       await signOut(auth);
-      navigation.replace("Login");
+      navigation.replace("LoginScreen");
     } catch (e) {
+      console.log('Logout error', e);
       Alert.alert("Lỗi", "Không thể đăng xuất.");
     }
   };
@@ -202,13 +275,19 @@ export default function ProfileScreen({ navigation, route }) {
         />
 
         {editing ? (
-          <TouchableOpacity
-            style={[styles.btnPrimary, saving && { opacity: 0.7 }]}
-            onPress={handleSave}
-            disabled={saving}
-          >
-            <Text style={styles.btnText}>{saving ? "Đang lưu..." : "💾 Lưu thay đổi"}</Text>
-          </TouchableOpacity>
+          <>
+            <TouchableOpacity
+              style={[styles.btnPrimary, saving && { opacity: 0.7 }]}
+              onPress={handleSave}
+              disabled={saving}
+            >
+              <Text style={styles.btnText}>{saving ? "Đang lưu..." : "💾 Lưu thay đổi"}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={[styles.btnOutline, { marginTop: 12 }]} onPress={seedDemoEvents}>
+              <Text style={styles.btnOutlineText}>Tạo 5 event demo</Text>
+            </TouchableOpacity>
+          </>
         ) : null}
 
         <TouchableOpacity style={styles.btnLogout} onPress={handleLogout}>
@@ -218,6 +297,15 @@ export default function ProfileScreen({ navigation, route }) {
     </ScrollView>
   );
 }
+
+ProfileScreen.propTypes = {
+  navigation: PropTypes.shape({
+    navigate: PropTypes.func.isRequired,
+    replace: PropTypes.func,
+    setParams: PropTypes.func,
+  }).isRequired,
+  route: PropTypes.object,
+};
 
 const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: "center", alignItems: "center" },

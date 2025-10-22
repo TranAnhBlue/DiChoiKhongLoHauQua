@@ -8,17 +8,17 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
 } from "react-native";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithCredential } from "firebase/auth";
 import { auth } from "../firebaseConfig";
 import { LinearGradient } from "expo-linear-gradient";
 import * as WebBrowser from "expo-web-browser";
 import * as Google from "expo-auth-session/providers/google";
-import { GoogleAuthProvider, signInWithCredential } from "firebase/auth";
 import { AntDesign } from "@expo/vector-icons"; // 👈 thêm dòng này
 
 WebBrowser.maybeCompleteAuthSession();
+
+import PropTypes from 'prop-types';
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState("");
@@ -123,6 +123,10 @@ export default function LoginScreen({ navigation }) {
     </LinearGradient>
   );
 }
+
+LoginScreen.propTypes = {
+  navigation: PropTypes.shape({ navigate: PropTypes.func.isRequired }).isRequired,
+};
 
 const styles = StyleSheet.create({
   gradient: { flex: 1 },
