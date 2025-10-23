@@ -8,23 +8,17 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
-  TextInput,
   ScrollView,
 } from "react-native";
-import * as ImagePicker from "expo-image-picker";
-import { auth, storage, db } from "../firebaseConfig";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { auth, db } from "../firebaseConfig";
+import { doc, getDoc } from "firebase/firestore";
 import { signOut } from "firebase/auth";
 import { createEvent } from '../services/events';
 
-export default function ProfileScreen({ navigation, route }) {
+export default function ProfileScreen({ navigation }) {
   const uid = auth.currentUser?.uid;
   const [profile, setProfile] = useState(null);
-  const [uploading, setUploading] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(true);
-  const [editing, setEditing] = useState(false);
 
   // Load profile info
   useEffect(() => {
@@ -40,6 +34,9 @@ export default function ProfileScreen({ navigation, route }) {
             phone: "",
             bio: "",
             avatar: "",
+            address: "",
+            birthDate: "",
+            gender: "",
           });
       } catch (e) {
         console.log("Load profile error", e);
@@ -50,6 +47,8 @@ export default function ProfileScreen({ navigation, route }) {
     load();
   }, [uid]);
 
+<<<<<<< HEAD
+=======
   // handle route param 'edit' to enter edit mode from header button
   useEffect(() => {
     if (route?.params?.edit) {
@@ -115,6 +114,7 @@ export default function ProfileScreen({ navigation, route }) {
       setSaving(false);
     }
   };
+>>>>>>> a2b64d666da3b9fa928f7686b9f347ee667b9d47
 
   // Logout
   const seedDemoEvents = async () => {
@@ -210,16 +210,6 @@ export default function ProfileScreen({ navigation, route }) {
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>Thông tin cá nhân</Text>
 
-      {editing ? (
-        <TouchableOpacity style={{ alignSelf: 'flex-end', marginBottom: 8 }} onPress={() => setEditing(false)}>
-          <Text style={{ color: '#8E2DE2' }}>Hủy</Text>
-        </TouchableOpacity>
-      ) : (
-        <TouchableOpacity style={{ alignSelf: 'flex-end', marginBottom: 8 }} onPress={() => setEditing(true)}>
-          <Text style={{ color: '#8E2DE2' }}>Chỉnh sửa</Text>
-        </TouchableOpacity>
-      )}
-
       {/* Avatar */}
       <View style={styles.avatarWrap}>
         {profile?.avatar ? (
@@ -233,47 +223,36 @@ export default function ProfileScreen({ navigation, route }) {
         )}
       </View>
 
-      <TouchableOpacity
-        style={[styles.btnOutline, uploading && { opacity: 0.6 }]}
-        onPress={pickImageAndUpload}
-        disabled={uploading}
+      <TouchableOpacity 
+        style={styles.btnOutline} 
+        onPress={() => navigation.navigate('EditProfile')}
       >
-        <Text style={styles.btnOutlineText}>
-          {uploading ? "Đang tải ảnh..." : "Cập nhật ảnh đại diện"}
-        </Text>
+        <Text style={styles.btnOutlineText}> Chỉnh sửa thông tin</Text>
       </TouchableOpacity>
 
-      {/* Form fields */}
-      <View style={styles.form}>
-        <Text style={styles.label}>Họ tên</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Nhập họ tên..."
-          value={profile?.displayName || ""}
-          editable={editing}
-          onChangeText={(t) => setProfile({ ...profile, displayName: t })}
-        />
+      {/* Profile Info Display */}
+      <View style={styles.infoContainer}>
+        <View style={styles.infoItem}>
+          <Text style={styles.infoLabel}>Email</Text>
+          <Text style={styles.infoValue}>{profile?.email || "Chưa có"}</Text>
+        </View>
 
-        <Text style={styles.label}>Số điện thoại</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Nhập số điện thoại..."
-          keyboardType="phone-pad"
-          value={profile?.phone || ""}
-          editable={editing}
-          onChangeText={(t) => setProfile({ ...profile, phone: t })}
-        />
+        <View style={styles.infoItem}>
+          <Text style={styles.infoLabel}>Họ tên</Text>
+          <Text style={styles.infoValue}>{profile?.displayName || "Chưa có"}</Text>
+        </View>
 
-        <Text style={styles.label}>Giới thiệu</Text>
-        <TextInput
-          style={[styles.input, { height: 80 }]}
-          multiline
-          placeholder="Mô tả ngắn về bạn..."
-          value={profile?.bio || ""}
-          editable={editing}
-          onChangeText={(t) => setProfile({ ...profile, bio: t })}
-        />
+        <View style={styles.infoItem}>
+          <Text style={styles.infoLabel}>Số điện thoại</Text>
+          <Text style={styles.infoValue}>{profile?.phone || "Chưa có"}</Text>
+        </View>
 
+<<<<<<< HEAD
+        <View style={styles.infoItem}>
+          <Text style={styles.infoLabel}>Giới thiệu</Text>
+          <Text style={styles.infoValue}>{profile?.bio || "Chưa có"}</Text>
+        </View>
+=======
         {editing ? (
           <>
             <TouchableOpacity
@@ -289,11 +268,27 @@ export default function ProfileScreen({ navigation, route }) {
             </TouchableOpacity>
           </>
         ) : null}
+>>>>>>> a2b64d666da3b9fa928f7686b9f347ee667b9d47
 
-        <TouchableOpacity style={styles.btnLogout} onPress={handleLogout}>
-          <Text style={styles.btnLogoutText}>🚪 Đăng xuất</Text>
-        </TouchableOpacity>
+        <View style={styles.infoItem}>
+          <Text style={styles.infoLabel}>Địa chỉ</Text>
+          <Text style={styles.infoValue}>{profile?.address || "Chưa có"}</Text>
+        </View>
+
+        <View style={styles.infoItem}>
+          <Text style={styles.infoLabel}>Ngày sinh</Text>
+          <Text style={styles.infoValue}>{profile?.birthDate || "Chưa có"}</Text>
+        </View>
+
+        <View style={styles.infoItem}>
+          <Text style={styles.infoLabel}>Giới tính</Text>
+          <Text style={styles.infoValue}>{profile?.gender || "Chưa có"}</Text>
+        </View>
       </View>
+
+      <TouchableOpacity style={styles.btnLogout} onPress={handleLogout}>
+        <Text style={styles.btnLogoutText}>🚪 Đăng xuất</Text>
+      </TouchableOpacity>
     </ScrollView>
   );
 }
@@ -320,6 +315,20 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     color: "#2D1B69",
   },
+  btnOutline: {
+    borderWidth: 1.5,
+    borderColor: "#8E2DE2",
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    marginBottom: 16,
+    alignSelf: "center",
+  },
+  btnOutlineText: { 
+    color: "#8E2DE2", 
+    fontWeight: "600",
+    fontSize: 14,
+  },
   avatarWrap: {
     marginBottom: 16,
     borderWidth: 3,
@@ -338,40 +347,37 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#8E2DE2",
   },
-  form: {
+  infoContainer: {
     width: "100%",
-    marginTop: 16,
-  },
-  label: { fontWeight: "600", color: "#333", marginTop: 12, marginBottom: 6 },
-  input: {
     backgroundColor: "#fff",
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 10,
-    padding: 10,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
   },
-  btnPrimary: {
-    backgroundColor: "#8E2DE2",
-    paddingVertical: 12,
-    borderRadius: 10,
-    marginTop: 20,
-    alignItems: "center",
+  infoItem: {
+    marginBottom: 12,
   },
-  btnText: { color: "#fff", fontWeight: "600", fontSize: 16 },
-  btnOutline: {
-    borderWidth: 1.5,
-    borderColor: "#8E2DE2",
+  infoLabel: {
+    fontWeight: "600",
+    color: "#666",
+    fontSize: 14,
+    marginBottom: 4,
+  },
+  infoValue: {
+    color: "#333",
+    fontSize: 16,
     paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 10,
+    paddingHorizontal: 12,
+    backgroundColor: "#F7F7FB",
+    borderRadius: 8,
   },
-  btnOutlineText: { color: "#8E2DE2", fontWeight: "600" },
   btnLogout: {
     backgroundColor: "#FF4E4E",
     paddingVertical: 12,
     borderRadius: 10,
     marginTop: 16,
     alignItems: "center",
+    width: "100%",
   },
   btnLogoutText: {
     color: "#fff",

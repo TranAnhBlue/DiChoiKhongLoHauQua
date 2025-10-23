@@ -12,6 +12,7 @@ import ForgotPasswordScreen from "../screens/ForgotPasswordScreen";
 // HomeScreen removed from navigator (we use MainTabs)
 import MainTabs from './MainTabs';
 import EventDetailScreen from "../screens/EventDetailScreen";
+import EditProfileScreen from "../screens/EditProfileScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -43,6 +44,7 @@ export default function AppNavigator() {
           <>
             <Stack.Screen name="Main" component={MainTabs} />
             <Stack.Screen name="EventDetail" component={EventDetailScreen} />
+            <Stack.Screen name="EditProfile" component={EditProfileScreen} />
           </>
         ) : (
           <>
