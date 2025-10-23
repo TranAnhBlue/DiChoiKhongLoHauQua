@@ -1,7 +1,6 @@
-import { collection, addDoc, query, where, getDocs } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs, Timestamp, doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import { geohashForLocation, geohashQueryBounds, distanceBetween } from 'geofire-common';
-import { Timestamp } from 'firebase/firestore';
 
 /**
  * createEvent - save an event with geohash and timestamps
@@ -44,26 +43,71 @@ export async function getLiveEventsNearby(center, radiusKm = 5) {
   const snapshots = await Promise.all(promises);
   const matching = [];
 
-  snapshots.forEach(sn => {
-    sn.forEach(doc => {
+  for (const sn of snapshots) {
+    for (const doc of sn.docs) {
       const data = doc.data();
       const startAt = data.startAt;
       const endAt = data.endAt;
       const started = startAt && startAt.seconds <= now.seconds;
       const notEnded = !endAt || endAt.seconds >= now.seconds;
-      if (!started || !notEnded) return;
+      if (!started || !notEnded) continue;
 
       const lat = data.location?.lat ?? null;
       const lng = data.location?.lng ?? null;
-      if (lat == null || lng == null) return;
+      if (lat == null || lng == null) continue;
 
       const d = distanceBetween([lat, lng], centerLoc); // meters
       if (d <= radiusKm * 1000) {
         matching.push({ id: doc.id, distanceMeters: d, ...data });
       }
-    });
-  });
+    }
+  }
 
   matching.sort((a, b) => a.distanceMeters - b.distanceMeters);
   return matching;
+}
+
+/**
+ * getEventById - fetch a single event document by id (returns null if missing)
+ */
+export async function getEventById(id) {
+  if (!id) return null;
+  const dref = doc(db, 'events', id);
+  const snap = await getDoc(dref);
+  if (!snap.exists()) return null;
+  return { id: snap.id, ...snap.data() };
+}
+
+/**
+ * getUpcomingEvents - return upcoming events ordered by startAt (next N)
+ * limit: number of events to return (default 20)
+ */
+export async function getUpcomingEvents(limit = 20) {
+  const col = collection(db, 'events');
+  const now = Timestamp.now();
+  const q = query(col, where('startAt', '>=', now), );
+  // Firestore doesn't allow ordering without index here if needed; we'll fetch and sort client-side
+  const snap = await getDocs(q);
+  const items = [];
+  for (const doc of snap.docs) {
+    const data = doc.data();
+    items.push({ id: doc.id, ...data });
+  }
+  items.sort((a, b) => (a.startAt?.seconds || 0) - (b.startAt?.seconds || 0));
+  return items.slice(0, limit);
+}
+
+/**
+ * getAllEvents - fetch all documents from the events collection
+ * If limit is provided, returns up to that many documents.
+ */
+export async function getAllEvents(limit = 0) {
+  const col = collection(db, 'events');
+  const snap = await getDocs(col);
+  const items = [];
+  for (const d of snap.docs) {
+    items.push({ id: d.id, ...d.data() });
+    if (limit > 0 && items.length >= limit) break;
+  }
+  return items;
 }

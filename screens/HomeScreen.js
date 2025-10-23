@@ -1,5 +1,6 @@
 // screens/HomeScreen.js
 import React, { useEffect } from "react";
+import PropTypes from 'prop-types';
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { signOut } from "firebase/auth";
 import { auth } from "../firebaseConfig";
@@ -35,6 +36,10 @@ export default function HomeScreen({ navigation }) {
     </View>
   );
 }
+
+HomeScreen.propTypes = {
+  navigation: PropTypes.shape({ navigate: PropTypes.func.isRequired }).isRequired,
+};
 
 const styles = StyleSheet.create({
   container: { flex: 1, justifyContent: "center", alignItems: "center", padding: 20, backgroundColor: "#F7F7FB" },
