@@ -1,7 +1,5 @@
-import { signOut } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
-import PropTypes from "prop-types";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
+import PropTypes from 'prop-types';
 import {
   ActivityIndicator,
   Alert,
@@ -12,50 +10,58 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { auth, db } from "../firebaseConfig";
-import { createEvent } from "../services/events";
+import { useFocusEffect } from '@react-navigation/native';
+import { auth, db, storage } from "../firebaseConfig";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { signOut } from "firebase/auth";
+import * as ImagePicker from "expo-image-picker";
+import { createEvent } from '../services/events';
 
-export default function ProfileScreen({ navigation }) {
+export default function ProfileScreen({ navigation, route }) {
   const uid = auth.currentUser?.uid;
   const [profile, setProfile] = useState(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  // Load profile info
-  useEffect(() => {
+  // Load profile info function
+  const loadProfile = useCallback(async () => {
     if (!uid) return;
-    const load = async () => {
-      try {
-        const snap = await getDoc(doc(db, "users", uid));
-        if (snap.exists()) setProfile(snap.data());
-        else
-          setProfile({
-            email: auth.currentUser?.email,
-            displayName: "",
-            phone: "",
-            bio: "",
-            avatar: "",
-            address: "",
-            birthDate: "",
-            gender: "",
-          });
-      } catch (e) {
-        console.log("Load profile error", e);
-      } finally {
-        setLoadingProfile(false);
-      }
-    };
-    load();
+    try {
+      setLoadingProfile(true);
+      const snap = await getDoc(doc(db, "users", uid));
+      if (snap.exists()) setProfile(snap.data());
+      else
+        setProfile({
+          email: auth.currentUser?.email,
+          displayName: "",
+          phone: "",
+          bio: "",
+          avatar: "",
+          address: "",
+          birthDate: "",
+          gender: "",
+        });
+    } catch (e) {
+      console.log("Load profile error", e);
+    } finally {
+      setLoadingProfile(false);
+    }
   }, [uid]);
 
-  // handle route param 'edit' to enter edit mode from header button
+  // Load profile on mount
   useEffect(() => {
-    if (route?.params?.edit) {
-      setEditing(true);
-      // clear param so re-entering doesn't automatically set it again
-      if (navigation && typeof navigation.setParams === "function")
-        navigation.setParams({ edit: false });
-    }
-  }, [route?.params]);
+    loadProfile();
+  }, [loadProfile]);
+<<<<<<< HEAD
+
+  // Reload profile when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadProfile();
+    }, [loadProfile])
+  );
 
   // Pick + upload avatar
   const pickImageAndUpload = async () => {
@@ -98,26 +104,15 @@ export default function ProfileScreen({ navigation }) {
       setUploading(false);
     }
   };
+=======
 
-  // Save profile info
-  const handleSave = async () => {
-    if (!profile) return;
-    setSaving(true);
-    try {
-      await updateDoc(doc(db, "users", uid), {
-        displayName: profile.displayName || "",
-        phone: profile.phone || "",
-        bio: profile.bio || "",
-        avatar: profile.avatar || "",
-      });
-      Alert.alert("✅ Đã lưu", "Thông tin cá nhân đã được cập nhật!");
-    } catch (err) {
-      console.log("Save error", err);
-      Alert.alert("Lỗi", "Không thể lưu thông tin.");
-    } finally {
-      setSaving(false);
-    }
-  };
+  // Reload profile when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadProfile();
+    }, [loadProfile])
+  );
+>>>>>>> 6760561 (fix format sửa ngày sinh)
 
   // Logout
   const seedDemoEvents = async () => {
@@ -259,26 +254,14 @@ export default function ProfileScreen({ navigation }) {
           <Text style={styles.infoValue}>{profile?.phone || "Chưa có"}</Text>
         </View>
 
-        {editing ? (
-          <>
-            <TouchableOpacity
-              style={[styles.btnPrimary, saving && { opacity: 0.7 }]}
-              onPress={handleSave}
-              disabled={saving}
-            >
-              <Text style={styles.btnText}>
-                {saving ? "Đang lưu..." : "💾 Lưu thay đổi"}
-              </Text>
-            </TouchableOpacity>
+<<<<<<< HEAD
 
-            <TouchableOpacity
-              style={[styles.btnOutline, { marginTop: 12 }]}
-              onPress={seedDemoEvents}
-            >
-              <Text style={styles.btnOutlineText}>Tạo 5 event demo</Text>
-            </TouchableOpacity>
-          </>
-        ) : null}
+=======
+        <View style={styles.infoItem}>
+          <Text style={styles.infoLabel}>Giới thiệu</Text>
+          <Text style={styles.infoValue}>{profile?.bio || "Chưa có"}</Text>
+        </View>
+>>>>>>> 6760561 (fix format sửa ngày sinh)
 
         <View style={styles.infoItem}>
           <Text style={styles.infoLabel}>Địa chỉ</Text>
@@ -309,7 +292,6 @@ ProfileScreen.propTypes = {
   navigation: PropTypes.shape({
     navigate: PropTypes.func.isRequired,
     replace: PropTypes.func,
-    setParams: PropTypes.func,
   }).isRequired,
   route: PropTypes.object,
 };
