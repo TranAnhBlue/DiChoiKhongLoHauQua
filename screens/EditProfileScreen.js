@@ -12,6 +12,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import * as ImagePicker from "expo-image-picker";
 import { auth, storage, db } from "../firebaseConfig";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -50,45 +51,6 @@ export default function EditProfileScreen({ navigation }) {
     };
     load();
   }, [uid]);
-
-  // Format birth date automatically
-  const formatBirthDate = (text) => {
-    // Remove all non-numeric characters
-    const numbers = text.replace(/\D/g, '');
-    
-    // Limit to 8 digits (DDMMYYYY)
-    const limitedNumbers = numbers.slice(0, 8);
-    
-    // Format based on length
-    if (limitedNumbers.length <= 2) {
-      return limitedNumbers;
-    } else if (limitedNumbers.length <= 4) {
-      return `${limitedNumbers.slice(0, 2)}/${limitedNumbers.slice(2)}`;
-    } else {
-      return `${limitedNumbers.slice(0, 2)}/${limitedNumbers.slice(2, 4)}/${limitedNumbers.slice(4)}`;
-    }
-  };
-
-  // Validate birth date
-  const validateBirthDate = (dateStr) => {
-    if (!dateStr || dateStr.length < 10) return true; // Allow incomplete dates
-    
-    const parts = dateStr.split('/');
-    if (parts.length !== 3) return false;
-    
-    const day = parseInt(parts[0], 10);
-    const month = parseInt(parts[1], 10);
-    const year = parseInt(parts[2], 10);
-    
-    // Basic validation
-    if (day < 1 || day > 31) return false;
-    if (month < 1 || month > 12) return false;
-    if (year < 1900 || year > new Date().getFullYear()) return false;
-    
-    // Check if date is valid
-    const date = new Date(year, month - 1, day);
-    return date.getDate() === day && date.getMonth() === month - 1 && date.getFullYear() === year;
-  };
 
   // Pick + upload avatar
   const pickImageAndUpload = async () => {
@@ -208,16 +170,15 @@ export default function EditProfileScreen({ navigation }) {
   }
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAwareScrollView 
       style={styles.keyboardAvoidingView}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      contentContainerStyle={styles.container}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+      enableOnAndroid={true}
+      enableAutomaticScroll={true}
+      extraScrollHeight={20}
     >
-      <ScrollView 
-        contentContainerStyle={styles.container}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
         <Text style={styles.title}>Chỉnh sửa thông tin</Text>
 
       {/* Avatar */}
@@ -293,7 +254,9 @@ export default function EditProfileScreen({ navigation }) {
           placeholder="DD/MM/YYYY"
           value={profile?.birthDate || ""}
           onChangeText={(text) => {
+            console.log('Input text:', text);
             const formatted = formatBirthDate(text);
+            console.log('Formatted text:', formatted);
             setProfile({ ...profile, birthDate: formatted });
           }}
           keyboardType="numeric"
@@ -367,8 +330,7 @@ export default function EditProfileScreen({ navigation }) {
       >
         <Text style={styles.btnCancelText}>❌ Hủy</Text>
       </TouchableOpacity>
-      </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardAwareScrollView>
   );
 }
 

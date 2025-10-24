@@ -54,7 +54,7 @@ export default function ProfileScreen({ navigation, route }) {
   useEffect(() => {
     loadProfile();
   }, [loadProfile]);
-<<<<<<< HEAD
+
 
   // Reload profile when screen comes into focus
   useFocusEffect(
@@ -104,15 +104,7 @@ export default function ProfileScreen({ navigation, route }) {
       setUploading(false);
     }
   };
-=======
 
-  // Reload profile when screen comes into focus
-  useFocusEffect(
-    useCallback(() => {
-      loadProfile();
-    }, [loadProfile])
-  );
->>>>>>> 6760561 (fix format sửa ngày sinh)
 
   // Logout
   const seedDemoEvents = async () => {
@@ -254,14 +246,7 @@ export default function ProfileScreen({ navigation, route }) {
           <Text style={styles.infoValue}>{profile?.phone || "Chưa có"}</Text>
         </View>
 
-<<<<<<< HEAD
 
-=======
-        <View style={styles.infoItem}>
-          <Text style={styles.infoLabel}>Giới thiệu</Text>
-          <Text style={styles.infoValue}>{profile?.bio || "Chưa có"}</Text>
-        </View>
->>>>>>> 6760561 (fix format sửa ngày sinh)
 
         <View style={styles.infoItem}>
           <Text style={styles.infoLabel}>Địa chỉ</Text>
