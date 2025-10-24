@@ -29,7 +29,13 @@
     },
     "plugins": [
       "expo-web-browser",
-      "expo-image-picker"
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow access to photos to select avatar image.",
+          "cameraPermission": "Allow access to camera to take avatar photo."
+        }
+      ]
     ]
   }
 }

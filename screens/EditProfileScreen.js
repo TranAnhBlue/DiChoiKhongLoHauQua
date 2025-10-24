@@ -299,9 +299,9 @@ export default function EditProfileScreen({ navigation }) {
         return;
       }
 
-      // Launch image picker
+      // Launch image picker with simpler config
       const res = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: [ImagePicker.MediaType.IMAGE],
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         quality: 0.7,
         allowsEditing: true,
         aspect: [1, 1],
@@ -323,20 +323,58 @@ export default function EditProfileScreen({ navigation }) {
       console.log('Selected image URI:', uri);
 
       setUploading(true);
+      
+      // Convert image to blob
       const response = await fetch(uri);
+      if (!response.ok) {
+        throw new Error('Failed to fetch image');
+      }
+      
       const blob = await response.blob();
+      console.log('Blob created:', blob.size, 'bytes');
 
-      const fileRef = ref(storage, `avatars/${uid}-${Date.now()}.jpg`);
-      await uploadBytes(fileRef, blob);
+      // Create storage reference
+      const fileName = `avatars/${uid}-${Date.now()}.jpg`;
+      const fileRef = ref(storage, fileName);
+      console.log('Uploading to:', fileName);
+
+      // Upload with progress tracking
+      const uploadTask = uploadBytes(fileRef, blob);
+      await uploadTask;
+      console.log('Upload completed');
+
+      // Get download URL
       const downloadURL = await getDownloadURL(fileRef);
+      console.log('Download URL:', downloadURL);
 
+      // Update user document
       await updateDoc(doc(db, "users", uid), { avatar: downloadURL });
       setProfile((p) => ({ ...(p || {}), avatar: downloadURL }));
 
       Alert.alert("✅ Thành công", "Ảnh đại diện đã được cập nhật.");
     } catch (error) {
       console.log("Image picker error:", error);
-      Alert.alert("Lỗi", error.message || "Không thể chọn ảnh. Vui lòng thử lại.");
+      
+      // Try fallback method with base64
+      try {
+        console.log("Trying fallback method...");
+        const base64Response = await fetch(uri);
+        const base64Blob = await base64Response.blob();
+        
+        const fallbackFileName = `avatars/${uid}-fallback-${Date.now()}.jpg`;
+        const fallbackRef = ref(storage, fallbackFileName);
+        
+        await uploadBytes(fallbackRef, base64Blob);
+        const fallbackURL = await getDownloadURL(fallbackRef);
+        
+        await updateDoc(doc(db, "users", uid), { avatar: fallbackURL });
+        setProfile((p) => ({ ...(p || {}), avatar: fallbackURL }));
+        
+        Alert.alert("✅ Thành công", "Ảnh đại diện đã được cập nhật (fallback method).");
+      } catch (fallbackError) {
+        console.log("Fallback also failed:", fallbackError);
+        Alert.alert("Lỗi", `Không thể upload ảnh: ${error.message}\nFallback cũng thất bại: ${fallbackError.message}`);
+      }
     } finally {
       setUploading(false);
     }

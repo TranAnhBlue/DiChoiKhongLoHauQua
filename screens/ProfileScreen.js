@@ -32,17 +32,18 @@ export default function ProfileScreen({ navigation, route }) {
       setLoadingProfile(true);
       const snap = await getDoc(doc(db, "users", uid));
       if (snap.exists()) setProfile(snap.data());
-      else
-        setProfile({
-          email: auth.currentUser?.email,
-          displayName: "",
-          phone: "",
-          bio: "",
-          avatar: "",
-          address: "",
-          birthDate: "",
-          gender: "",
-        });
+        else
+          setProfile({
+            email: auth.currentUser?.email,
+            displayName: "",
+            phone: "",
+            bio: "",
+            avatar: "",
+            address: "",
+            specificAddress: "",
+            birthDate: "",
+            gender: "",
+          });
     } catch (e) {
       console.log("Load profile error", e);
     } finally {
@@ -250,7 +251,12 @@ export default function ProfileScreen({ navigation, route }) {
 
         <View style={styles.infoItem}>
           <Text style={styles.infoLabel}>Địa chỉ</Text>
-          <Text style={styles.infoValue}>{profile?.address || "Chưa có"}</Text>
+          <Text style={styles.infoValue}>
+            {profile?.specificAddress && profile?.address 
+              ? `${profile.specificAddress}, ${profile.address}`
+              : profile?.specificAddress || profile?.address || "Chưa có"
+            }
+          </Text>
         </View>
 
         <View style={styles.infoItem}>
