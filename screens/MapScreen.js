@@ -1,159 +1,200 @@
-import React, { useEffect, useState, useRef } from 'react';
-import PropTypes from 'prop-types';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
-import MapView, { Marker } from 'react-native-maps';
-import * as Location from 'expo-location';
-import { getLiveEventsNearby, getEventById } from '../services/events';
+import * as Location from "expo-location";
+import PropTypes from "prop-types";
+import { useEffect, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import MapView, { Marker } from "react-native-maps";
+import { EVENT_CATEGORIES, getLiveEventsNearby } from "../services/events";
+import { getLocationsNearby, LOCATION_CATEGORIES } from "../services/locations";
+// Cập nhật import này để trỏ đến file DetailModal đã chỉnh sửa
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import DetailModal from "./DetailScreen";
 
 export default function MapScreen({ navigation, route }) {
   const [region, setRegion] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [mapType, setMapType] = useState('standard');
+  const [mapType, setMapType] = useState("standard");
   const [events, setEvents] = useState([]);
+  const [locations, setLocations] = useState([]);
   const [coordsText, setCoordsText] = useState(null);
-  const [focusedEventId, setFocusedEventId] = useState(null);
+  const [focusedItemId, setFocusedItemId] = useState(null);
   const mapRef = useRef(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedEventId, setSelectedEventId] = useState(null);
+  const [selectedLocationId, setSelectedLocationId] = useState(null);
 
-  const fetchNearby = async (center) => {
+  // Search & Filter states
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [selectedCategories, setSelectedCategories] = useState({
+    events: [],
+    locations: [],
+  });
+  const [showEvents, setShowEvents] = useState(true);
+  const [showLocations, setShowLocations] = useState(true);
+  const [radiusKm, setRadiusKm] = useState(10);
+
+  // Fetch both events and locations
+  const fetchNearbyItems = async (center) => {
     try {
-      const nearby = await getLiveEventsNearby({ latitude: center.latitude, longitude: center.longitude }, 10);
-      setEvents(nearby);
-      setCoordsText(`${center.latitude.toFixed(6)}, ${center.longitude.toFixed(6)}`);
+      setCoordsText(
+        `${center.latitude.toFixed(6)}, ${center.longitude.toFixed(6)}`
+      );
+
+      // Fetch events
+      if (showEvents) {
+        const eventFilter =
+          selectedCategories.events.length > 0
+            ? selectedCategories.events[0]
+            : null;
+        const nearbyEvents = await getLiveEventsNearby(
+          { latitude: center.latitude, longitude: center.longitude },
+          radiusKm,
+          eventFilter
+        );
+        setEvents(nearbyEvents);
+      } else {
+        setEvents([]);
+      }
+
+      // Fetch locations
+      if (showLocations) {
+        const locationFilter =
+          selectedCategories.locations.length > 0
+            ? selectedCategories.locations[0]
+            : null;
+        const nearbyLocations = await getLocationsNearby(
+          { latitude: center.latitude, longitude: center.longitude },
+          radiusKm,
+          locationFilter
+        );
+        setLocations(nearbyLocations);
+      } else {
+        setLocations([]);
+      }
     } catch (err) {
-      console.log('Error in fetchNearby', err);
+      console.log("Error in fetchNearbyItems", err);
     }
   };
 
   const handleLocateMe = async () => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Quyền bị từ chối', 'Cần quyền vị trí để định vị bạn.');
+      if (status !== "granted") {
+        Alert.alert("Quyền bị từ chối", "Cần quyền vị trí để định vị bạn.");
         return;
       }
-      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
-      const r = { latitude: loc.coords.latitude, longitude: loc.coords.longitude, latitudeDelta: 0.03, longitudeDelta: 0.03 };
+      const loc = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
+      const r = {
+        latitude: loc.coords.latitude,
+        longitude: loc.coords.longitude,
+        latitudeDelta: 0.03,
+        longitudeDelta: 0.03,
+      };
       setRegion(r);
       try {
         mapRef.current?.animateToRegion?.(r, 600);
       } catch (error_) {
-        // ignore animate errors on some Android map implementations
-        console.log('animateToRegion error', error_);
+        console.log("animateToRegion error", error_);
       }
-      await fetchNearby(r);
+      await fetchNearbyItems(r);
     } catch (error_) {
-      console.log('Locate me error', error_);
+      console.log("Locate me error", error_);
     }
   };
 
-  useEffect(() => {
-    // initial mount behavior handled below — keep initial location/fallback logic
+  const handleMarkerPress = (item) => {
+    // Reset và set ID mới
+    setSelectedEventId(null);
+    setSelectedLocationId(null);
 
+    if (item.markerType === "event") {
+      setSelectedEventId(item.id);
+    } else {
+      setSelectedLocationId(item.id);
+    }
+    // Mở modal
+    setShowDetailModal(true);
+  };
+
+  useEffect(() => {
     (async () => {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') {
-          console.log('Permission to access location was denied');
-          // fallback to default region (Hanoi)
-          const fallback = { latitude: 21.0278, longitude: 105.8342, latitudeDelta: 0.1, longitudeDelta: 0.1 };
-          setRegion(fallback);
-          try {
-            const nearby = await getLiveEventsNearby({ latitude: fallback.latitude, longitude: fallback.longitude }, 10);
-            setEvents(nearby);
-            setCoordsText(`${fallback.latitude.toFixed(6)}, ${fallback.longitude.toFixed(6)}`);
-          } catch (error_) {
-            console.log('Error fetching nearby events (fallback)', error_);
-          }
-          setLoading(false);
-          return;
+        let initialRegion;
+
+        if (status !== "granted") {
+          console.log("Permission to access location was denied");
+          initialRegion = {
+            latitude: 21.0278,
+            longitude: 105.8342,
+            latitudeDelta: 0.1,
+            longitudeDelta: 0.1,
+          };
+        } else {
+          const loc = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Highest,
+          });
+          initialRegion = {
+            latitude: loc.coords.latitude,
+            longitude: loc.coords.longitude,
+            latitudeDelta: 0.05,
+            longitudeDelta: 0.05,
+          };
         }
 
-        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Highest });
-  const r = { latitude: loc.coords.latitude, longitude: loc.coords.longitude, latitudeDelta: 0.05, longitudeDelta: 0.05 };
-        setRegion(r);
-        try {
-          await fetchNearby(r);
-        } catch (error_) {
-          console.log('Error fetching nearby events', error_);
-          setCoordsText(`${r.latitude.toFixed(6)}, ${r.longitude.toFixed(6)}`);
-        }
+        setRegion(initialRegion);
+        await fetchNearbyItems(initialRegion);
         setLoading(false);
       } catch (e) {
-        console.log('Location error', e);
-        const fallback = { latitude: 21.0278, longitude: 105.8342, latitudeDelta: 0.1, longitudeDelta: 0.1 };
+        console.log("Location error", e);
+        const fallback = {
+          latitude: 21.0278,
+          longitude: 105.8342,
+          latitudeDelta: 0.1,
+          longitudeDelta: 0.1,
+        };
         setRegion(fallback);
-        try {
-          await fetchNearby(fallback);
-        } catch (error_) {
-          console.log('Error fetching nearby events (catch)', error_);
-        }
+        await fetchNearbyItems(fallback);
         setLoading(false);
       }
     })();
   }, []);
 
-  // respond to route param changes (e.g., navigating from EventsList -> Map while Map is mounted)
+  // Re-fetch when filters change
   useEffect(() => {
-    const c = route?.params?.center;
-  const focusId = route?.params?.focusEventId;
-  const focusLocation = route?.params?.focusLocation;
-    if (!c) return;
-    const intended = { latitude: c.latitude, longitude: c.longitude, latitudeDelta: 0.03, longitudeDelta: 0.03 };
-    setRegion(intended);
-    try {
-      mapRef.current?.animateToRegion?.(intended, 600);
-    } catch (err) {
-      console.log('animateToRegion error (route update)', err);
+    if (region && !loading) {
+      fetchNearbyItems(region);
     }
-    // fetch nearby events and also ensure the focused event is present in the markers
-    (async () => {
-      try {
-        const nearby = await fetchNearby(intended);
-        // build a current events array and then set it once (reduce nested callbacks)
-        let current = Array.isArray(nearby) ? nearby.slice() : [];
+  }, [selectedCategories, showEvents, showLocations, radiusKm]);
 
-        if (focusId) {
-          const found = current.find((ev) => ev.id === focusId);
-          if (found) {
-            // focused event already present in nearby
-            setEvents(current);
-          } else {
-            // try fetching the focused event directly and prepend it
-            const ev = await getEventById(focusId);
-            if (ev?.location?.lat != null && ev?.location?.lng != null) {
-              ev.distanceMeters = ev.distanceMeters ?? 0;
-              // avoid duplicates
-              current = [ev, ...current.filter((x) => x.id !== ev.id)];
-              setEvents(current);
-            } else {
-              // fallback: just set nearby
-              setEvents(current);
-            }
-          }
-          setFocusedEventId(focusId);
-        } else {
-          // no focusEventId: set nearby, and optionally add a temporary marker for focusLocation
-          if (focusLocation?.lat != null && focusLocation?.lng != null) {
-            const tmp = {
-              id: `focus_loc_${focusLocation.lat}_${focusLocation.lng}`,
-              title: focusLocation.title || 'Vị trí',
-              location: { lat: focusLocation.lat, lng: focusLocation.lng },
-              _temporary: true,
-            };
-            current = [tmp, ...current.filter((x) => x.id !== tmp.id)];
-            setFocusedEventId(tmp.id);
-          }
-          setEvents(current);
-        }
-      } catch (error_) {
-        console.log('fetchNearby (route update) error', error_);
-      }
-    })();
-    // clear params so repeated navigations aren't ignored
-    if (navigation && typeof navigation.setParams === 'function') {
-      navigation.setParams({ center: undefined, focusEventId: undefined });
-    }
-  }, [route?.params?.center, route?.params?.focusEventId]);
+  // Handle category toggle
+  const toggleCategory = (type, category) => {
+    setSelectedCategories((prev) => {
+      const current = prev[type];
+      const newCategories = current.includes(category)
+        ? current.filter((c) => c !== category)
+        : [category]; // Only one category at a time for simplicity
+      return { ...prev, [type]: newCategories };
+    });
+  };
+
+  // Get all markers to display
+  const allMarkers = [
+    ...events.map((e) => ({ ...e, markerType: "event" })),
+    ...locations.map((l) => ({ ...l, markerType: "location" })),
+  ];
 
   if (loading || !region) {
     return (
@@ -165,68 +206,287 @@ export default function MapScreen({ navigation, route }) {
   }
 
   return (
-    <View style={styles.container}>
-      <MapView
-        ref={mapRef}
-        style={styles.map}
-        initialRegion={region}
-        showsUserLocation
-        mapType={mapType}
-      >
-        {events.map((e) => (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <View style={styles.container}>
+        <MapView
+          ref={mapRef}
+          style={styles.map}
+          initialRegion={region}
+          showsUserLocation
+          mapType={mapType}
+        >
+          {allMarkers.map((item) => (
             <Marker
-              key={e.id}
-              pinColor={e.id === focusedEventId ? '#d11010ff' : undefined}
-              coordinate={{ latitude: e.location.lat, longitude: e.location.lng }}
-              title={e.title}
-              description={e.category}
-              onPress={() => navigation.navigate('EventDetail', { eventId: e.id })}
+              key={`${item.markerType}-${item.id}`}
+              pinColor={
+                item.id === focusedItemId
+                  ? "#FF0000"
+                  : item.markerType === "event"
+                  ? "#8E2DE2"
+                  : "#28A745"
+              }
+              coordinate={{
+                latitude: item.location.lat,
+                longitude: item.location.lng,
+              }}
+              title={item.markerType === "event" ? item.title : item.name}
+              description={item.category}
+              onPress={() => handleMarkerPress(item)}
             />
-        ))}
-      </MapView>
+          ))}
+        </MapView>
 
-      {/* overlay showing coords and number of events */}
-      <View style={styles.overlay} pointerEvents="none">
-        <Text style={styles.overlayText}>Vị trí: {coordsText ?? '...'}</Text>
-        <Text style={styles.overlayText}>Sự kiện tìm thấy: {events.length}</Text>
-      </View>
-
-      <View style={styles.controls}>
-        <View style={styles.pickerRow}>
-          <Text style={styles.pickerLabel}>Kiểu bản đồ:</Text>
-          <View style={styles.segmentGroup}>
-            <TouchableOpacity
-              style={[styles.segmentButton, styles.segmentLeft, mapType === 'standard' && styles.segmentButtonActive]}
-              onPress={() => setMapType('standard')}
-            >
-              <Text style={[styles.segmentText, mapType === 'standard' && styles.segmentTextActive]}>Standard</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.segmentButton, styles.segmentMiddle, mapType === 'satellite' && styles.segmentButtonActive]}
-              onPress={() => setMapType('satellite')}
-            >
-              <Text style={[styles.segmentText, mapType === 'satellite' && styles.segmentTextActive]}>Satellite</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.segmentButton, styles.segmentRight, mapType === 'hybrid' && styles.segmentButtonActive]}
-              onPress={() => setMapType('hybrid')}
-            >
-              <Text style={[styles.segmentText, mapType === 'hybrid' && styles.segmentTextActive]}>Hybrid</Text>
-            </TouchableOpacity>
-          </View>
+        {/* Search Bar */}
+        <View style={styles.searchContainer}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Tìm kiếm sự kiện, địa điểm..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholderTextColor="#999"
+          />
+          <TouchableOpacity
+            style={styles.filterButton}
+            onPress={() => setShowFilterModal(true)}
+          >
+            <Text style={styles.filterButtonText}>🎯</Text>
+          </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Text style={{ color: '#fff' }}>Quay lại</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.backBtn, { marginTop: 8 }]} onPress={() => region && fetchNearby(region)}>
-          <Text style={{ color: '#fff' }}>Refresh</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.locateBtn, { marginTop: 8 }]} onPress={handleLocateMe}>
-          <Text style={{ color: '#fff' }}>Định vị tôi</Text>
-        </TouchableOpacity>
+        {/* Filter Modal */}
+        <Modal
+          visible={showFilterModal}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setShowFilterModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Bộ lọc tìm kiếm</Text>
+
+              {/* Show/Hide toggles */}
+              <View style={styles.filterSection}>
+                <Text style={styles.filterSectionTitle}>Hiển thị:</Text>
+                <View style={styles.toggleRow}>
+                  <TouchableOpacity
+                    style={[
+                      styles.toggleButton,
+                      showEvents && styles.toggleButtonActive,
+                    ]}
+                    onPress={() => setShowEvents(!showEvents)}
+                  >
+                    <Text
+                      style={[
+                        styles.toggleText,
+                        showEvents && styles.toggleTextActive,
+                      ]}
+                    >
+                      🎉 Sự kiện
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.toggleButton,
+                      showLocations && styles.toggleButtonActive,
+                    ]}
+                    onPress={() => setShowLocations(!showLocations)}
+                  >
+                    <Text
+                      style={[
+                        styles.toggleText,
+                        showLocations && styles.toggleTextActive,
+                      ]}
+                    >
+                      📌 Địa điểm
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Radius selector */}
+              <View style={styles.filterSection}>
+                <Text style={styles.filterSectionTitle}>
+                  Bán kính tìm kiếm:
+                </Text>
+                <View style={styles.radiusRow}>
+                  {[5, 10, 15, 20].map((r) => (
+                    <TouchableOpacity
+                      key={r}
+                      style={[
+                        styles.radiusButton,
+                        radiusKm === r && styles.radiusButtonActive,
+                      ]}
+                      onPress={() => setRadiusKm(r)}
+                    >
+                      <Text
+                        style={[
+                          styles.radiusText,
+                          radiusKm === r && styles.radiusTextActive,
+                        ]}
+                      >
+                        {r}km
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Event categories */}
+              {showEvents && (
+                <View style={styles.filterSection}>
+                  <Text style={styles.filterSectionTitle}>Loại sự kiện:</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    <View style={styles.categoryRow}>
+                      <TouchableOpacity
+                        style={[
+                          styles.categoryChip,
+                          selectedCategories.events.length === 0 &&
+                            styles.categoryChipActive,
+                        ]}
+                        onPress={() =>
+                          setSelectedCategories((prev) => ({
+                            ...prev,
+                            events: [],
+                          }))
+                        }
+                      >
+                        <Text
+                          style={[
+                            styles.categoryText,
+                            selectedCategories.events.length === 0 &&
+                              styles.categoryTextActive,
+                          ]}
+                        >
+                          Tất cả
+                        </Text>
+                      </TouchableOpacity>
+                      {Object.entries(EVENT_CATEGORIES).map(([key, value]) => (
+                        <TouchableOpacity
+                          key={key}
+                          style={[
+                            styles.categoryChip,
+                            selectedCategories.events.includes(value) &&
+                              styles.categoryChipActive,
+                          ]}
+                          onPress={() => toggleCategory("events", value)}
+                        >
+                          <Text
+                            style={[
+                              styles.categoryText,
+                              selectedCategories.events.includes(value) &&
+                                styles.categoryTextActive,
+                            ]}
+                          >
+                            {value}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </ScrollView>
+                </View>
+              )}
+
+              {/* Location categories */}
+              {showLocations && (
+                <View style={styles.filterSection}>
+                  <Text style={styles.filterSectionTitle}>Loại địa điểm:</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    <View style={styles.categoryRow}>
+                      <TouchableOpacity
+                        style={[
+                          styles.categoryChip,
+                          selectedCategories.locations.length === 0 &&
+                            styles.categoryChipActive,
+                        ]}
+                        onPress={() =>
+                          setSelectedCategories((prev) => ({
+                            ...prev,
+                            locations: [],
+                          }))
+                        }
+                      >
+                        <Text
+                          style={[
+                            styles.categoryText,
+                            selectedCategories.locations.length === 0 &&
+                              styles.categoryTextActive,
+                          ]}
+                        >
+                          Tất cả
+                        </Text>
+                      </TouchableOpacity>
+                      {Object.entries(LOCATION_CATEGORIES).map(
+                        ([key, value]) => (
+                          <TouchableOpacity
+                            key={key}
+                            style={[
+                              styles.categoryChip,
+                              selectedCategories.locations.includes(value) &&
+                                styles.categoryChipActive,
+                            ]}
+                            onPress={() => toggleCategory("locations", value)}
+                          >
+                            <Text
+                              style={[
+                                styles.categoryText,
+                                selectedCategories.locations.includes(value) &&
+                                  styles.categoryTextActive,
+                              ]}
+                            >
+                              {value}
+                            </Text>
+                          </TouchableOpacity>
+                        )
+                      )}
+                    </View>
+                  </ScrollView>
+                </View>
+              )}
+
+              {/* Action buttons */}
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={styles.modalButton}
+                  onPress={() => {
+                    setSelectedCategories({ events: [], locations: [] });
+                    setRadiusKm(10);
+                    setShowEvents(true);
+                    setShowLocations(true);
+                  }}
+                >
+                  <Text style={styles.modalButtonText}>Đặt lại</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.modalButtonPrimary]}
+                  onPress={() => setShowFilterModal(false)}
+                >
+                  <Text
+                    style={[
+                      styles.modalButtonText,
+                      styles.modalButtonTextPrimary,
+                    ]}
+                  >
+                    Áp dụng
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* === THAY ĐỔI QUAN TRỌNG === */}
+        {/* Luôn render DetailModal và truyền isVisible prop */}
+        <DetailModal
+          isVisible={showDetailModal}
+          onClose={() => {
+            setShowDetailModal(false);
+            // Không cần reset ID ở đây, modal sẽ tự động ẩn
+          }}
+          eventId={selectedEventId}
+          locationId={selectedLocationId}
+        />
       </View>
-    </View>
+    </GestureHandlerRootView>
   );
 }
 
@@ -234,35 +494,258 @@ MapScreen.propTypes = {
   navigation: PropTypes.shape({
     navigate: PropTypes.func.isRequired,
     goBack: PropTypes.func,
-    setParams: PropTypes.func,
   }).isRequired,
-  route: PropTypes.shape({
-    params: PropTypes.shape({
-      center: PropTypes.shape({ latitude: PropTypes.number, longitude: PropTypes.number }),
-      focusEventId: PropTypes.string,
-      focusLocation: PropTypes.shape({ lat: PropTypes.number, lng: PropTypes.number, title: PropTypes.string }),
-    }),
-  }),
+  route: PropTypes.object,
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F7F7FB' },
+  container: { flex: 1, backgroundColor: "#F7F7FB" },
   map: { flex: 1 },
-  controls: { position: 'absolute', top: 12, left: 12, right: 12, alignItems: 'flex-start' },
-  pickerRow: { backgroundColor: '#fff', paddingHorizontal: 8, paddingVertical: 6, borderRadius: 8, flexDirection: 'row', alignItems: 'center' },
-  pickerLabel: { marginRight: 8, alignSelf: 'center', fontSize: 14 },
-  picker: { height: 40, width: 140, alignSelf: 'center' },
-  segmentRow: { flexDirection: 'row', alignItems: 'center' },
-  segmentGroup: { flexDirection: 'row', backgroundColor: '#fff', borderRadius: 8, overflow: 'hidden', borderWidth: 1, borderColor: '#ddd' },
-  segmentButton: { paddingVertical: 6, paddingHorizontal: 10, backgroundColor: 'transparent' },
-  segmentLeft: { borderRightWidth: 1, borderRightColor: '#eee' },
-  segmentMiddle: { borderRightWidth: 1, borderRightColor: '#eee' },
-  segmentRight: {},
-  segmentButtonActive: { backgroundColor: '#8E2DE2' },
-  segmentText: { color: '#333' },
-  segmentTextActive: { color: '#fff', fontWeight: '700' },
-  backBtn: { marginTop: 8, backgroundColor: '#8E2DE2', padding: 10, borderRadius: 8 },
-  locateBtn: { marginTop: 8, backgroundColor: '#28A745', padding: 10, borderRadius: 8 },
-  overlay: { position: 'absolute', top: 12, left: 12, backgroundColor: 'rgba(0,0,0,0.6)', padding: 8, borderRadius: 8 },
-  overlayText: { color: '#fff', fontSize: 12 },
+
+  // Search bar
+  searchContainer: {
+    position: "absolute",
+    top: 30,
+    left: 12,
+    right: 12,
+    flexDirection: "row",
+    zIndex: 10,
+  },
+  searchInput: {
+    flex: 1,
+    backgroundColor: "#fff",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 25,
+    fontSize: 15,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  filterButton: {
+    marginLeft: 8,
+    backgroundColor: "#8E2DE2",
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  filterButtonText: { fontSize: 20 },
+
+  // Controls
+  controls: {
+    position: "absolute",
+    top: 120,
+    left: 12,
+    alignItems: "flex-start",
+    zIndex: 5,
+  },
+  pickerRow: {
+    backgroundColor: "#fff",
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  pickerLabel: { marginRight: 8, fontSize: 13, fontWeight: "600" },
+  segmentGroup: {
+    flexDirection: "row",
+    backgroundColor: "#f0f0f0",
+    borderRadius: 6,
+    overflow: "hidden",
+  },
+  segmentButton: { paddingVertical: 6, paddingHorizontal: 10 },
+  segmentLeft: { borderTopLeftRadius: 6, borderBottomLeftRadius: 6 },
+  segmentMiddle: {},
+  segmentRight: { borderTopRightRadius: 6, borderBottomRightRadius: 6 },
+  segmentButtonActive: { backgroundColor: "#8E2DE2" },
+  segmentText: { color: "#666", fontSize: 12 },
+  segmentTextActive: { color: "#fff", fontWeight: "700" },
+
+  backBtn: {
+    marginTop: 8,
+    backgroundColor: "#8E2DE2",
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  locateBtn: {
+    backgroundColor: "#28A745",
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  btnText: { color: "#fff", fontSize: 14, fontWeight: "600" },
+
+  // Overlay
+  overlay: {
+    position: "absolute",
+    bottom: 20,
+    left: 12,
+    backgroundColor: "rgba(0,0,0,0.75)",
+    padding: 12,
+    borderRadius: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  overlayText: {
+    color: "#fff",
+    fontSize: 13,
+    marginVertical: 2,
+    fontWeight: "500",
+  },
+
+  // Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    maxHeight: "80%",
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    marginBottom: 20,
+    textAlign: "center",
+    color: "#333",
+  },
+
+  filterSection: {
+    marginBottom: 20,
+  },
+  filterSectionTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 10,
+    color: "#555",
+  },
+
+  toggleRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  toggleButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    backgroundColor: "#f0f0f0",
+    alignItems: "center",
+  },
+  toggleButtonActive: {
+    backgroundColor: "#8E2DE2",
+  },
+  toggleText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#666",
+  },
+  toggleTextActive: {
+    color: "#fff",
+  },
+
+  radiusRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  radiusButton: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: "#f0f0f0",
+    alignItems: "center",
+  },
+  radiusButtonActive: {
+    backgroundColor: "#28A745",
+  },
+  radiusText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#666",
+  },
+  radiusTextActive: {
+    color: "#fff",
+  },
+
+  categoryRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  categoryChip: {
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    backgroundColor: "#f0f0f0",
+    borderWidth: 1,
+    borderColor: "#ddd",
+  },
+  categoryChipActive: {
+    backgroundColor: "#8E2DE2",
+    borderColor: "#8E2DE2",
+  },
+  categoryText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#666",
+  },
+  categoryTextActive: {
+    color: "#fff",
+  },
+
+  modalActions: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 20,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 10,
+    backgroundColor: "#f0f0f0",
+    alignItems: "center",
+  },
+  modalButtonPrimary: {
+    backgroundColor: "#8E2DE2",
+  },
+  modalButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#666",
+  },
+  modalButtonTextPrimary: {
+    color: "#fff",
+  },
 });

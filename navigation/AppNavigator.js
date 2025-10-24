@@ -1,18 +1,19 @@
 // navigation/AppNavigator.js
-import React, { useEffect, useState } from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { onAuthStateChanged } from "firebase/auth";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, Text, View } from "react-native";
 import { auth } from "../firebaseConfig";
-import { ActivityIndicator, View, Text } from "react-native";
 
+import EditProfileScreen from "../screens/EditProfileScreen";
+import ForgotPasswordScreen from "../screens/ForgotPasswordScreen";
 import LoginScreen from "../screens/LoginScreen";
 import RegisterScreen from "../screens/RegisterScreen";
-import ForgotPasswordScreen from "../screens/ForgotPasswordScreen";
-// HomeScreen removed from navigator (we use MainTabs)
-import MainTabs from './MainTabs';
-import EventDetailScreen from "../screens/EventDetailScreen";
-import EditProfileScreen from "../screens/EditProfileScreen";
+import MainTabs from "./MainTabs";
+
+// DetailModal không cần import vào Navigator vì nó được dùng như Modal component
+// Không phải là screen trong navigation stack
 
 const Stack = createNativeStackNavigator();
 
@@ -30,7 +31,14 @@ export default function AppNavigator() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#8E2DE2" }}>
+      <View
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          backgroundColor: "#8E2DE2",
+        }}
+      >
         <ActivityIndicator size="large" color="#fff" />
         <Text style={{ color: "#fff", marginTop: 12 }}>Đang tải...</Text>
       </View>
@@ -42,15 +50,41 @@ export default function AppNavigator() {
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {user ? (
           <>
+            {/* Main app với bottom tabs */}
             <Stack.Screen name="Main" component={MainTabs} />
-            <Stack.Screen name="EventDetail" component={EventDetailScreen} />
-            <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+
+            {/* Edit Profile screen */}
+            <Stack.Screen
+              name="EditProfile"
+              component={EditProfileScreen}
+              options={{
+                headerShown: true,
+                title: "Chỉnh sửa hồ sơ",
+                headerStyle: {
+                  backgroundColor: "#8E2DE2",
+                },
+                headerTintColor: "#fff",
+                headerTitleStyle: {
+                  fontWeight: "bold",
+                },
+              }}
+            />
+
+            {/* 
+              LƯU Ý: DetailModal KHÔNG cần thêm vào đây
+              Vì nó là Modal component, được dùng trực tiếp trong MapScreen
+              Không phải là một screen trong navigation stack
+            */}
           </>
         ) : (
           <>
+            {/* Auth screens */}
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="Register" component={RegisterScreen} />
-            <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+            <Stack.Screen
+              name="ForgotPassword"
+              component={ForgotPasswordScreen}
+            />
           </>
         )}
       </Stack.Navigator>
