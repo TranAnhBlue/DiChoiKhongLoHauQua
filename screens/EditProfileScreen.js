@@ -9,6 +9,8 @@ import {
   ActivityIndicator,
   TextInput,
   ScrollView,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { auth, storage, db } from "../firebaseConfig";
@@ -86,9 +88,55 @@ export default function EditProfileScreen({ navigation }) {
     }
   };
 
+  // Format birth date automatically
+  const formatBirthDate = (text) => {
+    // Remove all non-numeric characters
+    const numbers = text.replace(/\D/g, '');
+    
+    // Limit to 8 digits (DDMMYYYY)
+    const limitedNumbers = numbers.slice(0, 8);
+    
+    // Format based on length
+    if (limitedNumbers.length <= 2) {
+      return limitedNumbers;
+    } else if (limitedNumbers.length <= 4) {
+      return `${limitedNumbers.slice(0, 2)}/${limitedNumbers.slice(2)}`;
+    } else {
+      return `${limitedNumbers.slice(0, 2)}/${limitedNumbers.slice(2, 4)}/${limitedNumbers.slice(4)}`;
+    }
+  };
+
+  // Validate birth date
+  const validateBirthDate = (dateStr) => {
+    if (!dateStr || dateStr.length < 10) return true; // Allow incomplete dates
+    
+    const parts = dateStr.split('/');
+    if (parts.length !== 3) return false;
+    
+    const day = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10);
+    const year = parseInt(parts[2], 10);
+    
+    // Basic validation
+    if (day < 1 || day > 31) return false;
+    if (month < 1 || month > 12) return false;
+    if (year < 1900 || year > new Date().getFullYear()) return false;
+    
+    // Check if date is valid
+    const date = new Date(year, month - 1, day);
+    return date.getDate() === day && date.getMonth() === month - 1 && date.getFullYear() === year;
+  };
+
   // Save profile info
   const handleSave = async () => {
     if (!profile) return;
+    
+    // Validate birth date if provided
+    if (profile.birthDate && !validateBirthDate(profile.birthDate)) {
+      Alert.alert("Lỗi", "Ngày sinh không hợp lệ. Vui lòng kiểm tra lại.");
+      return;
+    }
+    
     setSaving(true);
     try {
       await updateDoc(doc(db, "users", uid), {
@@ -121,8 +169,17 @@ export default function EditProfileScreen({ navigation }) {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Chỉnh sửa thông tin</Text>
+    <KeyboardAvoidingView 
+      style={styles.keyboardAvoidingView}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+    >
+      <ScrollView 
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <Text style={styles.title}>Chỉnh sửa thông tin</Text>
 
       {/* Avatar */}
       <View style={styles.avatarWrap}>
@@ -190,11 +247,22 @@ export default function EditProfileScreen({ navigation }) {
 
         <Text style={styles.label}>Ngày sinh</Text>
         <TextInput
-          style={styles.input}
+          style={[
+            styles.input,
+            profile?.birthDate && !validateBirthDate(profile.birthDate) && styles.inputError
+          ]}
           placeholder="DD/MM/YYYY"
           value={profile?.birthDate || ""}
-          onChangeText={(t) => setProfile({ ...profile, birthDate: t })}
+          onChangeText={(text) => {
+            const formatted = formatBirthDate(text);
+            setProfile({ ...profile, birthDate: formatted });
+          }}
+          keyboardType="numeric"
+          maxLength={10}
         />
+        {profile?.birthDate && !validateBirthDate(profile.birthDate) && (
+          <Text style={styles.errorText}>Ngày sinh không hợp lệ</Text>
+        )}
 
         <Text style={styles.label}>Giới tính</Text>
         <View style={styles.genderContainer}>
@@ -260,17 +328,23 @@ export default function EditProfileScreen({ navigation }) {
       >
         <Text style={styles.btnCancelText}>❌ Hủy</Text>
       </TouchableOpacity>
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
+  keyboardAvoidingView: {
+    flex: 1,
+    backgroundColor: "#F7F7FB",
+  },
   container: {
     padding: 24,
     alignItems: "center",
     backgroundColor: "#F7F7FB",
     paddingBottom: 20,
+    flexGrow: 1,
   },
   title: {
     fontSize: 20,
@@ -392,5 +466,15 @@ const styles = StyleSheet.create({
     color: "#666",
     fontSize: 16,
     fontStyle: "italic",
+  },
+  inputError: {
+    borderColor: "#FF4E4E",
+    borderWidth: 2,
+  },
+  errorText: {
+    color: "#FF4E4E",
+    fontSize: 12,
+    marginTop: 4,
+    marginBottom: 8,
   },
 });
