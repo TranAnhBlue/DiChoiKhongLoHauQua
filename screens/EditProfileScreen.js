@@ -3,7 +3,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  Image,
   StyleSheet,
   Alert,
   ActivityIndicator,
@@ -15,16 +14,12 @@ import {
   FlatList,
 } from "react-native";
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
-import { Picker } from '@react-native-picker/picker';
-import * as ImagePicker from "expo-image-picker";
-import { auth, storage, db } from "../firebaseConfig";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { auth, db } from "../firebaseConfig";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 
 export default function EditProfileScreen({ navigation }) {
   const uid = auth.currentUser?.uid;
   const [profile, setProfile] = useState(null);
-  const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(true);
   
@@ -57,7 +52,6 @@ export default function EditProfileScreen({ navigation }) {
             displayName: "",
             phone: "",
             bio: "",
-            avatar: "",
             address: "",
             specificAddress: "",
             birthDate: "",
@@ -285,101 +279,6 @@ export default function EditProfileScreen({ navigation }) {
     return address.trim();
   };
 
-  // Pick + upload avatar
-  const pickImageAndUpload = async () => {
-    try {
-      console.log('Starting image picker...');
-      
-      // Request permissions
-      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      console.log('Permission result:', perm);
-      
-      if (!perm.granted) {
-        Alert.alert("Quyền bị từ chối", "Cần quyền truy cập ảnh để cập nhật avatar.");
-        return;
-      }
-
-      // Launch image picker with simpler config
-      const res = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 0.7,
-        allowsEditing: true,
-        aspect: [1, 1],
-      });
-
-      console.log('Image picker result:', res);
-
-      if (res.canceled) {
-        console.log('User canceled image picker');
-        return;
-      }
-
-      if (!res.assets || res.assets.length === 0) {
-        Alert.alert("Lỗi", "Không thể chọn ảnh. Vui lòng thử lại.");
-        return;
-      }
-
-      const uri = res.assets[0].uri;
-      console.log('Selected image URI:', uri);
-
-      setUploading(true);
-      
-      // Convert image to blob
-      const response = await fetch(uri);
-      if (!response.ok) {
-        throw new Error('Failed to fetch image');
-      }
-      
-      const blob = await response.blob();
-      console.log('Blob created:', blob.size, 'bytes');
-
-      // Create storage reference
-      const fileName = `avatars/${uid}-${Date.now()}.jpg`;
-      const fileRef = ref(storage, fileName);
-      console.log('Uploading to:', fileName);
-
-      // Upload with progress tracking
-      const uploadTask = uploadBytes(fileRef, blob);
-      await uploadTask;
-      console.log('Upload completed');
-
-      // Get download URL
-      const downloadURL = await getDownloadURL(fileRef);
-      console.log('Download URL:', downloadURL);
-
-      // Update user document
-      await updateDoc(doc(db, "users", uid), { avatar: downloadURL });
-      setProfile((p) => ({ ...(p || {}), avatar: downloadURL }));
-
-      Alert.alert("✅ Thành công", "Ảnh đại diện đã được cập nhật.");
-    } catch (error) {
-      console.log("Image picker error:", error);
-      
-      // Try fallback method with base64
-      try {
-        console.log("Trying fallback method...");
-        const base64Response = await fetch(uri);
-        const base64Blob = await base64Response.blob();
-        
-        const fallbackFileName = `avatars/${uid}-fallback-${Date.now()}.jpg`;
-        const fallbackRef = ref(storage, fallbackFileName);
-        
-        await uploadBytes(fallbackRef, base64Blob);
-        const fallbackURL = await getDownloadURL(fallbackRef);
-        
-        await updateDoc(doc(db, "users", uid), { avatar: fallbackURL });
-        setProfile((p) => ({ ...(p || {}), avatar: fallbackURL }));
-        
-        Alert.alert("✅ Thành công", "Ảnh đại diện đã được cập nhật (fallback method).");
-      } catch (fallbackError) {
-        console.log("Fallback also failed:", fallbackError);
-        Alert.alert("Lỗi", `Không thể upload ảnh: ${error.message}\nFallback cũng thất bại: ${fallbackError.message}`);
-      }
-    } finally {
-      setUploading(false);
-    }
-  };
-
   // Format birth date automatically
   const formatBirthDate = (text) => {
     // Remove all non-numeric characters
@@ -480,7 +379,6 @@ export default function EditProfileScreen({ navigation }) {
         displayName: profile.displayName || "",
         phone: profile.phone || "",
         bio: profile.bio || "",
-        avatar: profile.avatar || "",
         address: fullAddress || "",
         specificAddress: profile.specificAddress || "",
         birthDate: profile.birthDate || "",
@@ -522,28 +420,14 @@ export default function EditProfileScreen({ navigation }) {
     >
         <Text style={styles.title}>Chỉnh sửa thông tin</Text>
 
-      {/* Avatar */}
+      {/* Avatar Display */}
       <View style={styles.avatarWrap}>
-        {profile?.avatar ? (
-          <Image source={{ uri: profile.avatar }} style={styles.avatar} />
-        ) : (
-          <View style={[styles.avatar, styles.avatarPlaceholder]}>
-            <Text style={{ color: "#fff", fontWeight: "700", fontSize: 36 }}>
-              {profile?.email?.[0]?.toUpperCase() || "?"}
-            </Text>
-          </View>
-        )}
+        <View style={[styles.avatar, styles.avatarPlaceholder]}>
+          <Text style={{ color: "#fff", fontWeight: "700", fontSize: 36 }}>
+            {profile?.email?.[0]?.toUpperCase() || "?"}
+          </Text>
+        </View>
       </View>
-
-      <TouchableOpacity
-        style={[styles.btnOutline, uploading && { opacity: 0.6 }]}
-        onPress={pickImageAndUpload}
-        disabled={uploading}
-      >
-        <Text style={styles.btnOutlineText}>
-          {uploading ? "Đang tải ảnh..." : "Cập nhật ảnh đại diện"}
-        </Text>
-      </TouchableOpacity>
 
       {/* Form fields */}
       <View style={styles.formContainer}>
@@ -764,7 +648,7 @@ export default function EditProfileScreen({ navigation }) {
         style={styles.btnCancel} 
         onPress={() => navigation.goBack()}
       >
-        <Text style={styles.btnCancelText}>❌ Hủy</Text>
+        <Text style={styles.btnCancelText}> Hủy</Text>
       </TouchableOpacity>
 
       {/* Province Selection Modal */}

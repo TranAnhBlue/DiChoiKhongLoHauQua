@@ -3,7 +3,6 @@ import PropTypes from 'prop-types';
 import {
   ActivityIndicator,
   Alert,
-  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,19 +10,15 @@ import {
   View,
 } from "react-native";
 import { useFocusEffect } from '@react-navigation/native';
-import { auth, db, storage } from "../firebaseConfig";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { auth, db } from "../firebaseConfig";
+import { doc, getDoc } from "firebase/firestore";
 import { signOut } from "firebase/auth";
-import * as ImagePicker from "expo-image-picker";
 import { createEvent } from '../services/events';
 
 export default function ProfileScreen({ navigation, route }) {
   const uid = auth.currentUser?.uid;
   const [profile, setProfile] = useState(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
-  const [uploading, setUploading] = useState(false);
-  const [saving, setSaving] = useState(false);
 
   // Load profile info function
   const loadProfile = useCallback(async () => {
@@ -38,7 +33,6 @@ export default function ProfileScreen({ navigation, route }) {
             displayName: "",
             phone: "",
             bio: "",
-            avatar: "",
             address: "",
             specificAddress: "",
             birthDate: "",
@@ -63,49 +57,6 @@ export default function ProfileScreen({ navigation, route }) {
       loadProfile();
     }, [loadProfile])
   );
-
-  // Pick + upload avatar
-  const pickImageAndUpload = async () => {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted)
-      return Alert.alert(
-        "Quyền bị từ chối",
-        "Cần quyền truy cập ảnh để cập nhật avatar."
-      );
-
-    const res = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: [ImagePicker.MediaType.IMAGE],
-      quality: 0.7,
-      allowsEditing: true,
-      aspect: [1, 1],
-    });
-
-    if (res.canceled) return;
-    const uri = res.assets[0].uri;
-
-    try {
-      setUploading(true);
-      const response = await fetch(uri);
-      const blob = await response.blob();
-
-      const fileRef = ref(storage, `avatars/${uid}-${Date.now()}.jpg`);
-      await uploadBytes(fileRef, blob);
-      const downloadURL = await getDownloadURL(fileRef);
-
-      await updateDoc(doc(db, "users", uid), { avatar: downloadURL });
-      setProfile((p) =>
-        p ? { ...p, avatar: downloadURL } : { avatar: downloadURL }
-      );
-
-      Alert.alert("✅ Thành công", "Ảnh đại diện đã được cập nhật.");
-    } catch (error) {
-      console.log("Upload error", error);
-      Alert.alert("Lỗi", error.message || "Không thể tải ảnh lên.");
-    } finally {
-      setUploading(false);
-    }
-  };
-
 
   // Logout
   const seedDemoEvents = async () => {
@@ -208,18 +159,19 @@ export default function ProfileScreen({ navigation, route }) {
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>Thông tin cá nhân</Text>
 
-      {/* Avatar */}
+      {/* Avatar Display */}
       <View style={styles.avatarWrap}>
-        {profile?.avatar ? (
-          <Image source={{ uri: profile.avatar }} style={styles.avatar} />
-        ) : (
-          <View style={[styles.avatar, styles.avatarPlaceholder]}>
-            <Text style={{ color: "#fff", fontWeight: "700", fontSize: 32 }}>
-              {profile?.email?.[0]?.toUpperCase() || "?"}
-            </Text>
-          </View>
-        )}
+        <View style={[styles.avatar, styles.avatarPlaceholder]}>
+          <Text style={{ color: "#fff", fontWeight: "700", fontSize: 32 }}>
+            {profile?.email?.[0]?.toUpperCase() || "?"}
+          </Text>
+        </View>
       </View>
+
+      {/* Bio Section */}
+      {profile?.bio && (
+        <Text style={styles.bioText}>{profile.bio}</Text>
+      )}
 
       <TouchableOpacity
         style={styles.btnOutline}
@@ -273,7 +225,7 @@ export default function ProfileScreen({ navigation, route }) {
       </View>
 
       <TouchableOpacity style={styles.btnLogout} onPress={handleLogout}>
-        <Text style={styles.btnLogoutText}>🚪 Đăng xuất</Text>
+        <Text style={styles.btnLogoutText}> Đăng xuất</Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -331,6 +283,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#8E2DE2",
+  },
+  bioText: {
+    fontSize: 16,
+    color: "#333",
+    lineHeight: 24,
+    fontStyle: "italic",
+    textAlign: "center",
+    marginBottom: 16,
   },
   infoContainer: {
     width: "100%",
