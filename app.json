@@ -28,7 +28,14 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Ứng dụng cần quyền truy cập ảnh để bạn có thể chọn ảnh đại diện.",
+          "cameraPermission": "Ứng dụng cần quyền truy cập camera để bạn có thể chụp ảnh đại diện."
+        }
+      ]
     ]
   }
 }
