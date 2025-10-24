@@ -1,14 +1,14 @@
 import React, { useEffect, useState, useCallback } from "react";
 import PropTypes from 'prop-types';
 import {
-  View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  ScrollView,
+  StyleSheet,
   Text,
   TouchableOpacity,
-  Image,
-  StyleSheet,
-  Alert,
-  ActivityIndicator,
-  ScrollView,
+  View,
 } from "react-native";
 import { useFocusEffect } from '@react-navigation/native';
 import { auth, db, storage } from "../firebaseConfig";
@@ -66,7 +66,10 @@ export default function ProfileScreen({ navigation, route }) {
   const pickImageAndUpload = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted)
-      return Alert.alert("Quyền bị từ chối", "Cần quyền truy cập ảnh để cập nhật avatar.");
+      return Alert.alert(
+        "Quyền bị từ chối",
+        "Cần quyền truy cập ảnh để cập nhật avatar."
+      );
 
     const res = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: [ImagePicker.MediaType.IMAGE],
@@ -87,8 +90,10 @@ export default function ProfileScreen({ navigation, route }) {
       await uploadBytes(fileRef, blob);
       const downloadURL = await getDownloadURL(fileRef);
 
-  await updateDoc(doc(db, "users", uid), { avatar: downloadURL });
-  setProfile((p) => (p ? { ...p, avatar: downloadURL } : { avatar: downloadURL }));
+      await updateDoc(doc(db, "users", uid), { avatar: downloadURL });
+      setProfile((p) =>
+        p ? { ...p, avatar: downloadURL } : { avatar: downloadURL }
+      );
 
       Alert.alert("✅ Thành công", "Ảnh đại diện đã được cập nhật.");
     } catch (error) {
@@ -104,69 +109,74 @@ export default function ProfileScreen({ navigation, route }) {
     try {
       // Using the provided event data
       await createEvent({
-        title: 'Hội chợ Ẩm thực Nhật Bản',
-        description: 'Thưởng thức món ăn Nhật truyền thống, sushi và ramen tại Crescent Mall.',
-        category: 'Ẩm thực',
+        title: "Hội chợ Ẩm thực Nhật Bản",
+        description:
+          "Thưởng thức món ăn Nhật truyền thống, sushi và ramen tại Crescent Mall.",
+        category: "Ẩm thực",
         latitude: 10.7302,
         longitude: 106.7215,
-        startAt: '2025-10-25T17:00:00',
+        startAt: "2025-10-25T17:00:00",
         endAt: null,
-        imageUrl: 'https://i.imgur.com/Nik6mU8.jpg',
-        createdBy: 'demoUser',
+        imageUrl: "https://i.imgur.com/Nik6mU8.jpg",
+        createdBy: "demoUser",
       });
 
       await createEvent({
-        title: 'Lễ hội Âm nhạc ngoài trời Chill Fest',
-        description: 'Âm nhạc, đồ ăn và không khí sôi động tại Công viên Gia Định.',
-        category: 'Âm nhạc',
+        title: "Lễ hội Âm nhạc ngoài trời Chill Fest",
+        description:
+          "Âm nhạc, đồ ăn và không khí sôi động tại Công viên Gia Định.",
+        category: "Âm nhạc",
         latitude: 10.8173,
         longitude: 106.677,
-        startAt: '2025-10-27T18:30:00',
+        startAt: "2025-10-27T18:30:00",
         endAt: null,
-        imageUrl: 'https://i.imgur.com/4H9HY9s.jpg',
-        createdBy: 'demoUser',
+        imageUrl: "https://i.imgur.com/4H9HY9s.jpg",
+        createdBy: "demoUser",
       });
 
       await createEvent({
         title: "Chiếu phim ngoài trời – 'Your Name'",
-        description: 'Rạp chiếu ngoài trời tại Thảo Cầm Viên, mang theo ghế hoặc mền để ngồi xem.',
-        category: 'Phim ảnh',
+        description:
+          "Rạp chiếu ngoài trời tại Thảo Cầm Viên, mang theo ghế hoặc mền để ngồi xem.",
+        category: "Phim ảnh",
         latitude: 10.7883,
         longitude: 106.7058,
-        startAt: '2025-10-20T19:00:00',
+        startAt: "2025-10-20T19:00:00",
         endAt: null,
-        imageUrl: 'https://i.imgur.com/IaYcGKu.jpg',
-        createdBy: 'demoUser',
+        imageUrl: "https://i.imgur.com/IaYcGKu.jpg",
+        createdBy: "demoUser",
       });
 
       await createEvent({
-        title: 'Workshop Làm nến thơm',
-        description: 'Trải nghiệm tự tay làm nến thơm với hương tinh dầu tự nhiên.',
-        category: 'Thủ công',
+        title: "Workshop Làm nến thơm",
+        description:
+          "Trải nghiệm tự tay làm nến thơm với hương tinh dầu tự nhiên.",
+        category: "Thủ công",
         latitude: 10.7629,
         longitude: 106.6822,
-        startAt: '2025-10-22T14:00:00',
+        startAt: "2025-10-22T14:00:00",
         endAt: null,
-        imageUrl: 'https://i.imgur.com/ijTMoZJ.jpg',
-        createdBy: 'demoUser',
+        imageUrl: "https://i.imgur.com/ijTMoZJ.jpg",
+        createdBy: "demoUser",
       });
 
       await createEvent({
-        title: 'Triển lãm Nghệ thuật Trẻ 2025',
-        description: 'Không gian triển lãm tác phẩm hội họa và sắp đặt của các nghệ sĩ trẻ Việt Nam.',
-        category: 'Nghệ thuật',
+        title: "Triển lãm Nghệ thuật Trẻ 2025",
+        description:
+          "Không gian triển lãm tác phẩm hội họa và sắp đặt của các nghệ sĩ trẻ Việt Nam.",
+        category: "Nghệ thuật",
         latitude: 10.7781,
         longitude: 106.6956,
-        startAt: '2025-10-24T09:00:00',
+        startAt: "2025-10-24T09:00:00",
         endAt: null,
-        imageUrl: 'https://i.imgur.com/XwoRfva.jpg',
-        createdBy: 'demoUser',
+        imageUrl: "https://i.imgur.com/XwoRfva.jpg",
+        createdBy: "demoUser",
       });
 
-      Alert.alert('Đã tạo', '5 event demo đã được thêm vào Firestore.');
+      Alert.alert("Đã tạo", "5 event demo đã được thêm vào Firestore.");
     } catch (err) {
-      console.log('Seed error', err);
-      Alert.alert('Lỗi', 'Không thể tạo event demo.');
+      console.log("Seed error", err);
+      Alert.alert("Lỗi", "Không thể tạo event demo.");
     }
   };
 
@@ -175,7 +185,7 @@ export default function ProfileScreen({ navigation, route }) {
       await signOut(auth);
       navigation.replace("LoginScreen");
     } catch (e) {
-      console.log('Logout error', e);
+      console.log("Logout error", e);
       Alert.alert("Lỗi", "Không thể đăng xuất.");
     }
   };
@@ -184,7 +194,9 @@ export default function ProfileScreen({ navigation, route }) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color="#8E2DE2" />
-        <Text style={{ marginTop: 10, color: "#666" }}>Đang tải thông tin...</Text>
+        <Text style={{ marginTop: 10, color: "#666" }}>
+          Đang tải thông tin...
+        </Text>
       </View>
     );
   }
@@ -206,9 +218,9 @@ export default function ProfileScreen({ navigation, route }) {
         )}
       </View>
 
-      <TouchableOpacity 
-        style={styles.btnOutline} 
-        onPress={() => navigation.navigate('EditProfile')}
+      <TouchableOpacity
+        style={styles.btnOutline}
+        onPress={() => navigation.navigate("EditProfile")}
       >
         <Text style={styles.btnOutlineText}> Chỉnh sửa thông tin</Text>
       </TouchableOpacity>
@@ -222,7 +234,9 @@ export default function ProfileScreen({ navigation, route }) {
 
         <View style={styles.infoItem}>
           <Text style={styles.infoLabel}>Họ tên</Text>
-          <Text style={styles.infoValue}>{profile?.displayName || "Chưa có"}</Text>
+          <Text style={styles.infoValue}>
+            {profile?.displayName || "Chưa có"}
+          </Text>
         </View>
 
         <View style={styles.infoItem}>
@@ -239,7 +253,9 @@ export default function ProfileScreen({ navigation, route }) {
 
         <View style={styles.infoItem}>
           <Text style={styles.infoLabel}>Ngày sinh</Text>
-          <Text style={styles.infoValue}>{profile?.birthDate || "Chưa có"}</Text>
+          <Text style={styles.infoValue}>
+            {profile?.birthDate || "Chưa có"}
+          </Text>
         </View>
 
         <View style={styles.infoItem}>
@@ -285,8 +301,8 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     alignSelf: "center",
   },
-  btnOutlineText: { 
-    color: "#8E2DE2", 
+  btnOutlineText: {
+    color: "#8E2DE2",
     fontWeight: "600",
     fontSize: 14,
   },
