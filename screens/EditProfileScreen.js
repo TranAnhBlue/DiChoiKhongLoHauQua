@@ -299,7 +299,8 @@ export default function EditProfileScreen({ navigation }) {
 
   // Validate birth date
   const validateBirthDate = (dateStr) => {
-    if (!dateStr || dateStr.length < 10) return true; // Allow incomplete dates
+    // Yêu cầu phải nhập đủ ngày/tháng/năm (10 ký tự)
+    if (!dateStr || dateStr.length !== 10) return false;
     
     const parts = dateStr.split('/');
     if (parts.length !== 3) return false;
@@ -308,12 +309,19 @@ export default function EditProfileScreen({ navigation }) {
     const month = parseInt(parts[1], 10);
     const year = parseInt(parts[2], 10);
     
-    // Basic validation
-    if (day < 1 || day > 31) return false;
+    // Kiểm tra các phần có phải là số hợp lệ không
+    if (isNaN(day) || isNaN(month) || isNaN(year)) return false;
+    
+    // Kiểm tra tháng phải từ 1-12
     if (month < 1 || month > 12) return false;
+    
+    // Kiểm tra năm hợp lệ
     if (year < 1900 || year > new Date().getFullYear()) return false;
     
-    // Check if date is valid
+    // Kiểm tra ngày hợp lệ với tháng đó
+    if (day < 1 || day > 31) return false;
+    
+    // Kiểm tra ngày có tồn tại trong tháng đó không
     const date = new Date(year, month - 1, day);
     return date.getDate() === day && date.getMonth() === month - 1 && date.getFullYear() === year;
   };
@@ -344,6 +352,8 @@ export default function EditProfileScreen({ navigation }) {
     
     if (!profile?.birthDate?.trim()) {
       errors.push('Ngày sinh không được để trống');
+    } else if (!validateBirthDate(profile.birthDate)) {
+      errors.push('Ngày sinh không hợp lệ. Vui lòng nhập đủ ngày/tháng/năm (DD/MM/YYYY)');
     }
     
     if (!profile?.gender?.trim()) {
@@ -361,12 +371,6 @@ export default function EditProfileScreen({ navigation }) {
     const validationErrors = validateRequiredFields();
     if (validationErrors.length > 0) {
       Alert.alert("Thiếu thông tin bắt buộc", validationErrors.join('\n'));
-      return;
-    }
-    
-    // Validate birth date if provided
-    if (profile.birthDate && !validateBirthDate(profile.birthDate)) {
-      Alert.alert("Lỗi", "Ngày sinh không hợp lệ. Vui lòng kiểm tra lại.");
       return;
     }
     
@@ -583,7 +587,12 @@ export default function EditProfileScreen({ navigation }) {
           maxLength={10}
         />
         {profile?.birthDate && !validateBirthDate(profile.birthDate) && (
-          <Text style={styles.errorText}>Ngày sinh không hợp lệ</Text>
+          <Text style={styles.errorText}>
+            {profile.birthDate.length < 10 
+              ? 'Vui lòng nhập đủ ngày/tháng/năm (DD/MM/YYYY)' 
+              : 'Ngày sinh không hợp lệ'
+            }
+          </Text>
         )}
 
         <Text style={styles.label}>Giới tính <Text style={styles.required}>*</Text></Text>
