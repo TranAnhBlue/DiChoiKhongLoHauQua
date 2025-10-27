@@ -35,20 +35,28 @@ export default function DetailModal({
 
   const isEvent = itemType === "event";
 
-  // Fetch dữ liệu khi có id
   useEffect(() => {
-    if (isVisible && (eventId || locationId)) {
+    if (!isVisible) {
+      setItem(null);
+      setLoading(true);
+      setItemType(null);
+      return;
+    }
+
+    if (eventId || locationId) {
       let mounted = true;
       setLoading(true);
+      setItemType(null);
+
       (async () => {
         try {
-          if (eventId) {
+          if (eventId && !locationId) {
             const data = await getEventById(eventId);
             if (mounted) {
               setItem(data);
               setItemType("event");
             }
-          } else if (locationId) {
+          } else if (locationId && !eventId) {
             const data = await getLocationById(locationId);
             if (mounted) {
               setItem(data);
@@ -57,15 +65,18 @@ export default function DetailModal({
           }
         } catch (err) {
           console.log("Error loading detail", err);
-          if (mounted) setItem(null);
+          if (mounted) {
+            setItem(null);
+            setItemType(null);
+          }
         } finally {
           if (mounted) setLoading(false);
         }
       })();
-      return () => (mounted = false);
-    } else {
-      setItem(null);
-      setLoading(true);
+
+      return () => {
+        mounted = false;
+      };
     }
   }, [isVisible, eventId, locationId]);
 

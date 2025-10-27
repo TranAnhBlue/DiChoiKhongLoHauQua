@@ -29,9 +29,7 @@ export default function MapScreen({ navigation, route }) {
   const [focusedItemId, setFocusedItemId] = useState(null);
   const mapRef = useRef(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
-  const [selectedEventId, setSelectedEventId] = useState(null);
-  const [selectedLocationId, setSelectedLocationId] = useState(null);
-
+  const [selectedItem, setSelectedItem] = useState(null);
   // Search & Filter states
   const [searchQuery, setSearchQuery] = useState("");
   const [showFilterModal, setShowFilterModal] = useState(false);
@@ -113,19 +111,25 @@ export default function MapScreen({ navigation, route }) {
       console.log("Locate me error", error_);
     }
   };
-
   const handleMarkerPress = (item) => {
-    // Reset và set ID mới
-    setSelectedEventId(null);
-    setSelectedLocationId(null);
+    console.log("=== MARKER PRESSED ===");
+    console.log("Item ID:", item.id);
+    console.log("Item Type:", item.markerType);
 
-    if (item.markerType === "event") {
-      setSelectedEventId(item.id);
-    } else {
-      setSelectedLocationId(item.id);
+    if (showDetailModal) {
+      setShowDetailModal(false);
     }
-    // Mở modal
-    setShowDetailModal(true);
+
+    const newSelectedItem = {
+      id: item.id,
+      type: item.markerType,
+    };
+
+    setSelectedItem(newSelectedItem);
+
+    setTimeout(() => {
+      setShowDetailModal(true);
+    }, 100);
   };
 
   useEffect(() => {
@@ -200,7 +204,6 @@ export default function MapScreen({ navigation, route }) {
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color="#8E2DE2" />
-        <Text style={{ marginTop: 12 }}>Đang lấy vị trí...</Text>
       </View>
     );
   }
@@ -301,6 +304,7 @@ export default function MapScreen({ navigation, route }) {
                     </Text>
                   </TouchableOpacity>
                 </View>
+                r
               </View>
 
               {/* Radius selector */}
@@ -474,16 +478,16 @@ export default function MapScreen({ navigation, route }) {
           </View>
         </Modal>
 
-        {/* === THAY ĐỔI QUAN TRỌNG === */}
-        {/* Luôn render DetailModal và truyền isVisible prop */}
         <DetailModal
           isVisible={showDetailModal}
           onClose={() => {
             setShowDetailModal(false);
-            // Không cần reset ID ở đây, modal sẽ tự động ẩn
+            setSelectedItem(null); // Reset khi đóng
           }}
-          eventId={selectedEventId}
-          locationId={selectedLocationId}
+          eventId={selectedItem?.type === "event" ? selectedItem.id : null}
+          locationId={
+            selectedItem?.type === "location" ? selectedItem.id : null
+          }
         />
       </View>
     </GestureHandlerRootView>
