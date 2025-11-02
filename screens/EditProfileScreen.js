@@ -15,7 +15,7 @@ import {
 } from "react-native";
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { auth, db } from "../firebaseConfig";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc, setDoc } from "firebase/firestore";
 
 export default function EditProfileScreen({ navigation }) {
   const uid = auth.currentUser?.uid;
@@ -379,7 +379,10 @@ export default function EditProfileScreen({ navigation }) {
       // Get full address
       const fullAddress = getFullAddress();
       
-      await updateDoc(doc(db, "users", uid), {
+      // Use setDoc with merge to create if not exists, or update if exists
+      const userDocRef = doc(db, "users", uid);
+      await setDoc(userDocRef, {
+        email: auth.currentUser?.email || profile?.email || "", // Ensure email is preserved
         displayName: profile.displayName || "",
         phone: profile.phone || "",
         bio: profile.bio || "",
@@ -391,13 +394,15 @@ export default function EditProfileScreen({ navigation }) {
         provinceCode: selectedProvince || "",
         districtCode: selectedDistrict || "",
         wardCode: selectedWard || "",
-      });
+      }, { merge: true }); // merge: true ensures it updates existing doc or creates new one
+      
       Alert.alert(" Đã lưu", "Thông tin cá nhân đã được cập nhật!", [
         { text: "OK", onPress: () => navigation.goBack() }
       ]);
     } catch (err) {
       console.log("Save error", err);
-      Alert.alert("Lỗi", "Không thể lưu thông tin.");
+      console.log("Error details:", err.message, err.code);
+      Alert.alert("Lỗi", `Không thể lưu thông tin: ${err.message || "Vui lòng thử lại sau."}`);
     } finally {
       setSaving(false);
     }
