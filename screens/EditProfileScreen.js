@@ -392,7 +392,7 @@ export default function EditProfileScreen({ navigation }) {
         districtCode: selectedDistrict || "",
         wardCode: selectedWard || "",
       });
-      Alert.alert("✅ Đã lưu", "Thông tin cá nhân đã được cập nhật!", [
+      Alert.alert(" Đã lưu", "Thông tin cá nhân đã được cập nhật!", [
         { text: "OK", onPress: () => navigation.goBack() }
       ]);
     } catch (err) {
@@ -561,11 +561,13 @@ export default function EditProfileScreen({ navigation }) {
 
         {/* Display full address */}
         {getFullAddress() && (
-          <View style={styles.addressDisplay}>
-            <Text style={styles.addressLabel}>Địa chỉ đã chọn:</Text>
-            <Text style={styles.addressText}>
-              {profile?.specificAddress ? `${profile.specificAddress}, ` : ''}{getFullAddress()}
-            </Text>
+          <View style={{ marginTop: 8 }}>
+            <Text style={styles.label}>Địa chỉ đã chọn</Text>
+            <View style={styles.readOnlyField}>
+              <Text style={styles.readOnlyText}>
+                {profile?.specificAddress ? `${profile.specificAddress}, ` : ''}{getFullAddress()}
+              </Text>
+            </View>
           </View>
         )}
 
