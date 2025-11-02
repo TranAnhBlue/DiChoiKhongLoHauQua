@@ -12,11 +12,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import MapView, { Marker } from "react-native-maps";
 import { EVENT_CATEGORIES, getLiveEventsNearby } from "../services/events";
 import { getLocationsNearby, LOCATION_CATEGORIES } from "../services/locations";
-// Cập nhật import này để trỏ đến file DetailModal đã chỉnh sửa
-import { GestureHandlerRootView } from "react-native-gesture-handler";
 import DetailModal from "./DetailScreen";
 
 export default function MapScreen({ navigation, route }) {
@@ -111,6 +110,7 @@ export default function MapScreen({ navigation, route }) {
       console.log("Locate me error", error_);
     }
   };
+
   const handleMarkerPress = (item) => {
     console.log("=== MARKER PRESSED ===");
     console.log("Item ID:", item.id);
@@ -189,15 +189,47 @@ export default function MapScreen({ navigation, route }) {
       const current = prev[type];
       const newCategories = current.includes(category)
         ? current.filter((c) => c !== category)
-        : [category]; // Only one category at a time for simplicity
+        : [category];
       return { ...prev, [type]: newCategories };
     });
   };
 
-  // Get all markers to display
+  // Filter function for search
+  const filterBySearch = (items, type) => {
+    if (!searchQuery.trim()) return items;
+
+    const query = searchQuery.toLowerCase().trim();
+
+    return items.filter((item) => {
+      // For events: search in title, description, category
+      if (type === "event") {
+        return (
+          item.title?.toLowerCase().includes(query) ||
+          item.description?.toLowerCase().includes(query) ||
+          item.category?.toLowerCase().includes(query)
+        );
+      }
+      // For locations: search in name, description, category, address
+      if (type === "location") {
+        return (
+          item.name?.toLowerCase().includes(query) ||
+          item.description?.toLowerCase().includes(query) ||
+          item.category?.toLowerCase().includes(query) ||
+          item.address?.toLowerCase().includes(query)
+        );
+      }
+      return true;
+    });
+  };
+
+  // Apply search filter to events and locations
+  const filteredEvents = filterBySearch(events, "event");
+  const filteredLocations = filterBySearch(locations, "location");
+
+  // Get all markers to display (with search filter applied)
   const allMarkers = [
-    ...events.map((e) => ({ ...e, markerType: "event" })),
-    ...locations.map((l) => ({ ...l, markerType: "location" })),
+    ...filteredEvents.map((e) => ({ ...e, markerType: "event" })),
+    ...filteredLocations.map((l) => ({ ...l, markerType: "location" })),
   ];
 
   if (loading || !region) {
@@ -256,6 +288,18 @@ export default function MapScreen({ navigation, route }) {
           </TouchableOpacity>
         </View>
 
+        {/* Search Results Counter */}
+        {searchQuery.trim() !== "" && (
+          <View style={styles.searchResultsBar}>
+            <Text style={styles.searchResultsText}>
+              Tìm thấy {allMarkers.length} kết quả cho "{searchQuery}"
+            </Text>
+            <TouchableOpacity onPress={() => setSearchQuery("")}>
+              <Text style={styles.clearSearchText}>✕</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Filter Modal */}
         <Modal
           visible={showFilterModal}
@@ -304,7 +348,6 @@ export default function MapScreen({ navigation, route }) {
                     </Text>
                   </TouchableOpacity>
                 </View>
-                r
               </View>
 
               {/* Radius selector */}
@@ -482,7 +525,7 @@ export default function MapScreen({ navigation, route }) {
           isVisible={showDetailModal}
           onClose={() => {
             setShowDetailModal(false);
-            setSelectedItem(null); // Reset khi đóng
+            setSelectedItem(null);
           }}
           eventId={selectedItem?.type === "event" ? selectedItem.id : null}
           locationId={
@@ -543,6 +586,39 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   filterButtonText: { fontSize: 20 },
+
+  // Search results bar
+  searchResultsBar: {
+    position: "absolute",
+    top: 90,
+    left: 12,
+    right: 12,
+    backgroundColor: "#fff",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    zIndex: 9,
+  },
+  searchResultsText: {
+    fontSize: 14,
+    color: "#333",
+    fontWeight: "600",
+    flex: 1,
+  },
+  clearSearchText: {
+    fontSize: 18,
+    color: "#999",
+    fontWeight: "600",
+    paddingHorizontal: 8,
+  },
 
   // Controls
   controls: {
