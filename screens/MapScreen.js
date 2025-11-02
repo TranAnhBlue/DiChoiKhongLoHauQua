@@ -294,7 +294,6 @@ export default function MapScreen({ navigation, route }) {
     }
   }, [focusedItemId, events, showMarkerCallout]);
 
-  // Filter items by search query
   const filterBySearch = useCallback(
     (items, type) => {
       if (!searchQuery.trim()) return items;
@@ -334,12 +333,10 @@ export default function MapScreen({ navigation, route }) {
     setSearchQuery("");
   }, []);
 
-  // Dismiss keyboard
   const dismissKeyboard = useCallback(() => {
     Keyboard.dismiss();
   }, []);
 
-  // Handle search input change
   const handleSearchChange = useCallback((text) => {
     setSearchQuery(text);
     setShowSearchResults(text.trim().length > 0);
@@ -352,8 +349,6 @@ export default function MapScreen({ navigation, route }) {
     Keyboard.dismiss();
   }, []);
 
-  // Initial load
-  // Initial load
   useEffect(() => {
     let isMounted = true;
 
@@ -431,7 +426,6 @@ export default function MapScreen({ navigation, route }) {
     };
   }, [route?.params, getUserLocation, fetchNearbyItems, showMarkerCallout]);
 
-  // Auto-open detail modal - updated to handle preloaded data
   useEffect(() => {
     if (
       !loading &&

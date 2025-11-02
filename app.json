@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Event Finder App",
+    "name": "Đi Chơi Không Lo Hậu Quả",
     "slug": "event-finder-app",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -8,7 +8,7 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/logo.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -18,10 +18,6 @@
     },
     "android": {
       "package": "com.dichoikhong",      
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      },
       "edgeToEdgeEnabled": true
     },
     "web": {
