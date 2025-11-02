@@ -24,14 +24,22 @@ CHỨC NĂNG CỦA BẠN:
 3. Chào hỏi, cảm ơn, hỗ trợ người dùng một cách thân thiện
 
 KHI NGƯỜI DÙNG HỎI VỀ TÌM KIẾM:
+- **QUAN TRỌNG**: Tất cả tìm kiếm đều dựa trên VỊ TRÍ HIỆN TẠI của người dùng
+- Bán kính (5km, 10km, etc.) luôn được tính TỪ VỊ TRÍ HIỆN TẠI của người dùng
 - Phân tích câu hỏi để tìm: loại địa điểm/sự kiện, khoảng cách (km)
 - Nếu thiếu thông tin, hãy hỏi lại người dùng
 - Trả lời ngắn gọn, rõ ràng, thân thiện bằng tiếng Việt
+- Luôn nhắc rằng kết quả được tìm từ vị trí hiện tại của họ
+
+KHI NGƯỜI DÙNG HỎI VỀ VỊ TRÍ HIỆN TẠI:
+- Trả lời thân thiện về địa chỉ và tọa độ của họ
+- Có thể đề xuất tìm kiếm địa điểm gần đó
 
 VÍ DỤ:
-- "Tìm quán cafe ở gần 5km" -> Tìm Quán Cafe trong bán kính 5km
-- "Quán bida nào gần đây?" -> Tìm Quán Bida, hỏi bán kính nếu chưa có
-- "Sự kiện âm nhạc cuối tuần" -> Tìm sự kiện Âm nhạc`;
+- "Tìm quán cafe ở gần 5km" -> Tìm Quán Cafe trong bán kính 5km TỪ VỊ TRÍ HIỆN TẠI
+- "Quán bida nào gần đây?" -> Tìm Quán Bida TỪ VỊ TRÍ HIỆN TẠI, hỏi bán kính nếu chưa có
+- "Sự kiện âm nhạc cuối tuần" -> Tìm sự kiện Âm nhạc TỪ VỊ TRÍ HIỆN TẠI
+- "Bạn biết vị trí hiện tại của tôi là ở đâu?" -> Trả lời địa chỉ và tọa độ hiện tại`;
 
 /**
  * Map từ từ khóa người dùng đến category chính xác
@@ -132,7 +140,7 @@ function parseSearchQuery(message) {
 }
 
 /**
- * Lấy vị trí hiện tại của người dùng
+ * Lấy vị trí hiện tại của người dùng (bao gồm địa chỉ)
  */
 async function getCurrentLocation() {
     try {
@@ -143,14 +151,71 @@ async function getCurrentLocation() {
         const location = await Location.getCurrentPositionAsync({
             accuracy: Location.Accuracy.High,
         });
-        return {
+
+        const coords = {
             latitude: location.coords.latitude,
             longitude: location.coords.longitude,
         };
+
+        // Reverse geocoding để lấy địa chỉ
+        try {
+            const reverseGeocode = await Location.reverseGeocodeAsync(coords);
+            if (reverseGeocode && reverseGeocode.length > 0) {
+                const address = reverseGeocode[0];
+                // Format địa chỉ từ reverse geocode
+                const addressParts = [];
+                if (address.street) addressParts.push(address.street);
+                if (address.district) addressParts.push(address.district);
+                if (address.city || address.subregion) {
+                    addressParts.push(address.city || address.subregion);
+                }
+                if (address.region) addressParts.push(address.region);
+                if (address.country) addressParts.push(address.country);
+
+                coords.address = addressParts.length > 0
+                    ? addressParts.join(", ")
+                    : `${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)}`;
+
+                // Thêm thông tin chi tiết
+                coords.city = address.city || address.subregion || "";
+                coords.district = address.district || "";
+                coords.street = address.street || "";
+            } else {
+                // Fallback nếu không có địa chỉ
+                coords.address = `${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)}`;
+            }
+        } catch (geocodeError) {
+            console.error("Reverse geocoding error:", geocodeError);
+            // Fallback nếu reverse geocoding lỗi
+            coords.address = `${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)}`;
+        }
+
+        return coords;
     } catch (error) {
         console.error("Error getting location:", error);
         return null;
     }
+}
+
+/**
+ * Kiểm tra xem câu hỏi có phải về vị trí hiện tại không
+ */
+function isLocationQuestion(message) {
+    const lowerMessage = message.toLowerCase();
+    const locationKeywords = [
+        "vị trí hiện tại",
+        "vị trí của tôi",
+        "tôi đang ở đâu",
+        "địa chỉ của tôi",
+        "tọa độ của tôi",
+        "vị trí bạn",
+        "bạn biết vị trí",
+        "location",
+        "where am i",
+        "my location",
+    ];
+
+    return locationKeywords.some(keyword => lowerMessage.includes(keyword));
 }
 
 /**
@@ -258,16 +323,30 @@ function formatSearchResults(searchData) {
  */
 export async function sendMessageToGemini(message, conversationHistory = []) {
     try {
+        // Kiểm tra xem có phải câu hỏi về vị trí hiện tại không
+        const isLocationQ = isLocationQuestion(message);
+
         // Parse query để xem có phải là câu hỏi tìm kiếm không
         const parsedQuery = parseSearchQuery(message);
         const hasSearchIntent = parsedQuery.category || parsedQuery.searchType;
 
+        // Lấy vị trí hiện tại nếu cần (cho câu hỏi về vị trí hoặc tìm kiếm)
+        let userLocation = null;
+        if (isLocationQ || hasSearchIntent) {
+            userLocation = await getCurrentLocation();
+        }
+
         let searchResults = null;
         let searchData = null;
 
-        // Nếu có intent tìm kiếm, thực hiện tìm kiếm trước
+        // Nếu có intent tìm kiếm, thực hiện tìm kiếm trước (LUÔN dùng vị trí hiện tại)
         if (hasSearchIntent) {
-            const userLocation = await getCurrentLocation();
+            if (!userLocation) {
+                // Nếu không lấy được vị trí, trả về lỗi ngay
+                return {
+                    text: "Tôi không thể lấy vị trí hiện tại của bạn. Vui lòng cho phép ứng dụng truy cập vị trí trong cài đặt để tôi có thể tìm kiếm địa điểm và sự kiện gần bạn.",
+                };
+            }
             searchData = await performSearch(parsedQuery, userLocation);
             searchResults = formatSearchResults(searchData);
         }
@@ -275,9 +354,32 @@ export async function sendMessageToGemini(message, conversationHistory = []) {
         // Xây dựng prompt với context
         let userMessage = message;
 
-        // Thêm context về kết quả tìm kiếm nếu có
-        if (searchResults && searchData?.success) {
-            userMessage = `${message}\n\n[KẾT QUẢ TÌM KIẾM]\n${searchResults}\n\nHãy trả lời dựa trên kết quả tìm kiếm này một cách tự nhiên và hữu ích.`;
+        // Thêm context về vị trí hiện tại nếu được hỏi
+        if (isLocationQ && userLocation) {
+            const cityInfo = userLocation.city ? `🏙️ Thành phố: ${userLocation.city}\n` : "";
+            const districtInfo = userLocation.district ? `📍 Quận/Huyện: ${userLocation.district}\n` : "";
+            const coordinates = `${userLocation.latitude.toFixed(6)}, ${userLocation.longitude.toFixed(6)}`;
+
+            userMessage = `${message}\n\n[THÔNG TIN VỊ TRÍ HIỆN TẠI]\n` +
+                `📍 Địa chỉ: ${userLocation.address}\n` +
+                `🌐 Tọa độ: ${coordinates}\n` +
+                `${cityInfo}` +
+                `${districtInfo}` +
+                `\nHãy trả lời một cách thân thiện và tự nhiên về vị trí hiện tại của người dùng.`;
+        } else if (isLocationQ && !userLocation) {
+            // Nếu hỏi về vị trí nhưng không lấy được
+            return {
+                text: "Xin lỗi, tôi không thể lấy vị trí hiện tại của bạn. Vui lòng cho phép ứng dụng truy cập vị trí trong cài đặt để tôi có thể biết bạn đang ở đâu.",
+            };
+        }
+
+        // Thêm context về kết quả tìm kiếm nếu có (nhấn mạnh rằng tìm từ vị trí hiện tại)
+        if (searchResults && searchData?.success && userLocation) {
+            userMessage = `${message}\n\n[KẾT QUẢ TÌM KIẾM TỪ VỊ TRÍ HIỆN TẠI CỦA BẠN]\n` +
+                `📍 Vị trí tìm kiếm: ${userLocation.address}\n` +
+                `📏 Bán kính: ${parsedQuery.radius}km\n\n` +
+                `${searchResults}\n\n` +
+                `Hãy trả lời dựa trên kết quả tìm kiếm này một cách tự nhiên và hữu ích. Nhấn mạnh rằng các kết quả được tìm từ vị trí hiện tại của người dùng.`;
         }
 
         // Xây dựng lịch sử cuộc trò chuyện
