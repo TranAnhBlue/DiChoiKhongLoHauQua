@@ -1,7 +1,7 @@
 // services/geminiService.js
 import * as Location from "expo-location";
 import { getLocationsNearby, LOCATION_CATEGORIES } from "./locations";
-import { getLiveEventsNearby, EVENT_CATEGORIES } from "./events";
+import { getLiveEventsNearby, getUpcomingEvents, EVENT_CATEGORIES } from "./events";
 
 const GEMINI_API_KEY = "AIzaSyDkS9IVipgld-GNVf8nk5PteRxCQ8ytp7Y";
 // Model: gemini-2.5-flash (theo yêu cầu)
@@ -500,8 +500,6 @@ export async function sendMessageToGemini(message, conversationHistory = []) {
  * Có thể sử dụng để cung cấp thông tin cho chatbot
  */
 export async function getEventsContext() {
-    // Import động để tránh circular dependency
-    const { getUpcomingEvents } = await import("./events");
     try {
         const events = await getUpcomingEvents(5);
         return events.map((e) => ({
