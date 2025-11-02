@@ -291,6 +291,57 @@ export default function DetailModal({
             </ScrollView>
           )}
 
+          {/* Detail section */}
+{item.detail && (
+  <View style={styles.section}>
+    <Text style={styles.sectionTitle}>Chi tiết sự kiện</Text>
+    <Text style={styles.description}>{item.detail}</Text>
+  </View>
+)}
+
+{/* Social links */}
+{item.socialLinks && (
+  <View style={styles.socialLinks}>
+    {item.socialLinks.facebook && (
+      <TouchableOpacity
+        style={styles.socialButton}
+        onPress={() => Linking.openURL(item.socialLinks.facebook)}
+      >
+        <Text style={styles.socialIcon}>📘</Text>
+        <Text style={styles.socialText}>Facebook</Text>
+      </TouchableOpacity>
+    )}
+    {item.socialLinks.tiktok && (
+      <TouchableOpacity
+        style={styles.socialButton}
+        onPress={() => Linking.openURL(item.socialLinks.tiktok)}
+      >
+        <Text style={styles.socialIcon}>🎵</Text>
+        <Text style={styles.socialText}>TikTok</Text>
+      </TouchableOpacity>
+    )}
+    {item.socialLinks.instagram && (
+      <TouchableOpacity
+        style={styles.socialButton}
+        onPress={() => Linking.openURL(item.socialLinks.instagram)}
+      >
+        <Text style={styles.socialIcon}>📸</Text>
+        <Text style={styles.socialText}>Instagram</Text>
+      </TouchableOpacity>
+    )}
+    {item.socialLinks.website && (
+      <TouchableOpacity
+        style={styles.socialButton}
+        onPress={() => Linking.openURL(item.socialLinks.website)}
+      >
+        <Text style={styles.socialIcon}>🌐</Text>
+        <Text style={styles.socialText}>Website</Text>
+      </TouchableOpacity>
+    )}
+  </View>
+)}
+
+
           {/* Action Buttons */}
           <View style={styles.actions}>
             <TouchableOpacity
@@ -339,6 +390,36 @@ DetailModal.propTypes = {
 };
 
 const styles = StyleSheet.create({
+  sectionTitle: {
+  fontSize: 16,
+  fontWeight: "700",
+  color: "#333",
+  marginBottom: 6,
+},
+socialLinks: {
+  flexDirection: "row",
+  flexWrap: "wrap",
+  gap: 10,
+  marginBottom: 16,
+},
+socialButton: {
+  flexDirection: "row",
+  alignItems: "center",
+  backgroundColor: "#f0f0f0",
+  paddingHorizontal: 12,
+  paddingVertical: 8,
+  borderRadius: 12,
+},
+socialIcon: {
+  fontSize: 18,
+  marginRight: 6,
+},
+socialText: {
+  fontSize: 14,
+  fontWeight: "600",
+  color: "#444",
+},
+
   closeButton: {
     position: "absolute",
     top: 12,

@@ -114,6 +114,64 @@ export async function getLiveEventsNearby(
 }
 
 /**
+ * getAllEventsNearby - Lấy TẤT CẢ sự kiện (đang diễn ra + sắp diễn ra)
+ * Dùng cho MapScreen để hiển thị đầy đủ
+ */
+export async function getAllEventsNearby(
+  center,
+  radiusKm = 5,
+  categoryFilter = null
+) {
+  const centerLoc = [center.latitude, center.longitude];
+  const bounds = geohashQueryBounds(centerLoc, radiusKm * 1000);
+  const col = collection(db, "events");
+  const now = Timestamp.now();
+
+  const promises = bounds.map((b) => {
+    const q = query(
+      col,
+      where("geohash", ">=", b[0]),
+      where("geohash", "<=", b[1])
+    );
+    return getDocs(q);
+  });
+
+  const snapshots = await Promise.all(promises);
+  const matching = [];
+
+  for (const sn of snapshots) {
+    for (const docSnap of sn.docs) {
+      const data = docSnap.data();
+
+      // Filter by category
+      if (categoryFilter && data.category !== categoryFilter) continue;
+
+      const endAt = data.endAt;
+      // Chỉ loại bỏ events đã kết thúc
+      const notEnded = !endAt || endAt.seconds >= now.seconds;
+      if (!notEnded) continue;
+
+      const lat = data.location?.lat ?? null;
+      const lng = data.location?.lng ?? null;
+      if (lat == null || lng == null) continue;
+
+      const d = distanceBetween([lat, lng], centerLoc);
+      if (d <= radiusKm * 1000) {
+        matching.push({
+          id: docSnap.id,
+          distanceMeters: d,
+          type: "event",
+          ...data,
+        });
+      }
+    }
+  }
+
+  matching.sort((a, b) => a.distanceMeters - b.distanceMeters);
+  return matching;
+}
+
+/**
  * getEventById
  */
 export async function getEventById(id) {
