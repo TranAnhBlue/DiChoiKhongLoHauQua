@@ -5,6 +5,7 @@ import { TouchableOpacity } from "react-native";
 import EventsListScreen from "../screens/EventsListScreen";
 import MapScreen from "../screens/MapScreen";
 import ProfileScreen from "../screens/ProfileScreen";
+import ChatScreen from "../screens/ChatScreen";
 
 function TabBarIcon({ name, color, size }) {
   return <Ionicons name={name} size={size} color={color} />;
@@ -32,6 +33,7 @@ const Tab = createBottomTabNavigator();
 function getTabBarIcon(routeName, color, size) {
   let name = "list";
   if (routeName === "Map") name = "map";
+  if (routeName === "Chat") name = "chatbubble-ellipses";
   if (routeName === "Profile") name = "person";
   return <TabBarIcon name={name} color={color} size={size} />;
 }
@@ -53,6 +55,11 @@ export default function MainTabs() {
         name="Map"
         component={MapScreen}
         options={{ title: "Bản đồ" }}
+      />
+      <Tab.Screen
+        name="Chat"
+        component={ChatScreen}
+        options={{ title: "Chat AI", headerShown: false }}
       />
       <Tab.Screen
         name="Profile"
