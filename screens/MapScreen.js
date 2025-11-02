@@ -938,7 +938,7 @@ const styles = StyleSheet.create({
   },
   searchContainer: {
     position: "absolute",
-    top: 50,
+    top: 10,
     left: 16,
     right: 16,
     flexDirection: "row",
@@ -994,7 +994,7 @@ const styles = StyleSheet.create({
   },
   searchResultsContainer: {
     position: "absolute",
-    top: 120,
+    top: 70,
     left: 16,
     right: 16,
     maxHeight: 400,
@@ -1099,7 +1099,6 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "flex-end",
   },
   modalContent: {
