@@ -306,19 +306,61 @@ async function tryExpoGeocoding(coords) {
 async function getCurrentLocation() {
     try {
         console.log("📍 [getCurrentLocation] Bắt đầu lấy vị trí...");
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== "granted") {
-            console.log("❌ [getCurrentLocation] Không có quyền truy cập vị trí");
+
+        // Kiểm tra xem location services có sẵn không
+        const isLocationEnabled = await Location.hasServicesEnabledAsync();
+        if (!isLocationEnabled) {
+            console.log("❌ [getCurrentLocation] Location services chưa được bật");
             return null;
         }
-        const location = await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.High,
-        });
+
+        // Kiểm tra quyền hiện tại trước
+        let { status } = await Location.getForegroundPermissionsAsync();
+
+        // Nếu chưa có quyền, yêu cầu quyền
+        if (status !== "granted") {
+            console.log("📍 [getCurrentLocation] Chưa có quyền, đang yêu cầu...");
+            const permissionResult = await Location.requestForegroundPermissionsAsync();
+            status = permissionResult.status;
+
+            if (status !== "granted") {
+                console.log("❌ [getCurrentLocation] Người dùng từ chối quyền truy cập vị trí");
+                return null;
+            }
+        }
+
+        // Lấy vị trí với timeout và error handling tốt hơn
+        let location;
+        try {
+            location = await Location.getCurrentPositionAsync({
+                accuracy: Location.Accuracy.High,
+                timeout: 10000, // 10 giây timeout
+            });
+        } catch (locationError) {
+            // Xử lý các lỗi cụ thể về location
+            if (locationError.message && locationError.message.includes("location is unavailable")) {
+                console.log("❌ [getCurrentLocation] Location services không khả dụng");
+                return null;
+            }
+            throw locationError; // Re-throw nếu là lỗi khác
+        }
+
+        // Kiểm tra tính hợp lệ của tọa độ
+        if (!location || !location.coords) {
+            console.log("❌ [getCurrentLocation] Không nhận được tọa độ hợp lệ");
+            return null;
+        }
 
         const coords = {
             latitude: location.coords.latitude,
             longitude: location.coords.longitude,
         };
+
+        // Validate tọa độ
+        if (!isValidCoordinate(coords.latitude, coords.longitude)) {
+            console.log("❌ [getCurrentLocation] Tọa độ không hợp lệ:", coords);
+            return null;
+        }
 
         console.log("✅ [getCurrentLocation] GPS coordinates:", coords.latitude, coords.longitude);
 
@@ -341,6 +383,10 @@ async function getCurrentLocation() {
         return coords;
     } catch (error) {
         console.error("❌ [getCurrentLocation] Error:", error);
+        // Log chi tiết lỗi để debug
+        if (error.message) {
+            console.error("❌ [getCurrentLocation] Error message:", error.message);
+        }
         return null;
     }
 }
