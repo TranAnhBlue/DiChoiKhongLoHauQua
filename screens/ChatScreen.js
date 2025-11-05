@@ -15,7 +15,7 @@ import {
     Keyboard,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { sendMessageToGemini } from "../services/geminiService";
+import { sendMessageToGemini, openLocationSettings } from "../services/geminiService";
 
 export default function ChatScreen({ navigation }) {
     const [messages, setMessages] = useState([
@@ -104,6 +104,8 @@ export default function ChatScreen({ navigation }) {
                 searchResults: searchResults, // Lưu kết quả tìm kiếm để có thể mở bản đồ
                 searchType: response.searchType,
                 radius: response.radius,
+                needsSettings: response.needsSettings || false, // Flag để mở settings
+                needsPermission: response.needsPermission || false,
             };
 
             setMessages((prev) => [...prev, aiMessage]);
@@ -131,6 +133,18 @@ export default function ChatScreen({ navigation }) {
         navigation.navigate("Map");
     };
 
+    const handleOpenSettings = async () => {
+        try {
+            await openLocationSettings();
+        } catch (error) {
+            console.error("Error opening settings:", error);
+            Alert.alert(
+                "Lỗi",
+                "Không thể mở cài đặt. Vui lòng mở cài đặt thủ công và cho phép ứng dụng truy cập vị trí."
+            );
+        }
+    };
+
     const handleQuickReply = (text) => {
         setInputText(text);
     };
@@ -138,6 +152,7 @@ export default function ChatScreen({ navigation }) {
     const renderMessage = ({ item }) => {
         const isUser = item.role === "user";
         const hasSearchResults = item.searchResults && item.searchResults.length > 0;
+        const needsSettings = item.needsSettings || false;
 
         return (
             <View
@@ -174,6 +189,15 @@ export default function ChatScreen({ navigation }) {
                         >
                             <Ionicons name="map-outline" size={16} color="#8E2DE2" />
                             <Text style={styles.mapButtonText}>Xem trên bản đồ</Text>
+                        </TouchableOpacity>
+                    )}
+                    {needsSettings && !isUser && (
+                        <TouchableOpacity
+                            style={styles.settingsButton}
+                            onPress={handleOpenSettings}
+                        >
+                            <Ionicons name="settings-outline" size={16} color="#FF6B00" />
+                            <Text style={styles.settingsButtonText}>Mở cài đặt</Text>
                         </TouchableOpacity>
                     )}
                 </View>
@@ -240,15 +264,35 @@ export default function ChatScreen({ navigation }) {
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={styles.quickReplyChip}
+                            onPress={() => handleQuickReply("Quán bida nào gần đây?")}
+                        >
+                            <Text style={styles.quickReplyText}>🎱 Quán bida</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.quickReplyChip}
+                            onPress={() => handleQuickReply("Tìm quán net gần đây")}
+                        >
+                            <Text style={styles.quickReplyText}>💻 Quán net</Text>
+                        </TouchableOpacity>
+                    </View>
+                    <View style={styles.quickRepliesRow}>
+                        <TouchableOpacity
+                            style={styles.quickReplyChip}
+                            onPress={() => handleQuickReply("Nhà hàng nào gần đây?")}
+                        >
+                            <Text style={styles.quickReplyText}>🍽️ Nhà hàng</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.quickReplyChip}
                             onPress={() => handleQuickReply("Sự kiện âm nhạc cuối tuần")}
                         >
                             <Text style={styles.quickReplyText}>🎵 Sự kiện</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={styles.quickReplyChip}
-                            onPress={() => handleQuickReply("Quán bida nào gần đây?")}
+                            onPress={() => handleQuickReply("Sự kiện nào đang diễn ra gần đây?")}
                         >
-                            <Text style={styles.quickReplyText}>🎱 Quán bida</Text>
+                            <Text style={styles.quickReplyText}>🎉 Sự kiện hot</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -403,6 +447,23 @@ const styles = StyleSheet.create({
         fontSize: 13,
         fontWeight: "600",
         color: "#8E2DE2",
+    },
+    settingsButton: {
+        flexDirection: "row",
+        alignItems: "center",
+        marginTop: 8,
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        backgroundColor: "#FFF3E0",
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: "#FF6B00",
+    },
+    settingsButtonText: {
+        marginLeft: 6,
+        fontSize: 13,
+        fontWeight: "600",
+        color: "#FF6B00",
     },
     quickRepliesContainer: {
         paddingHorizontal: 16,
