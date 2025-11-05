@@ -68,6 +68,7 @@ export default function MapScreen({ navigation, route }) {
   const hasAutoOpenedDetail = useRef(false);
   const lastAutoOpenEventId = useRef(null); // Track last event ID that auto-opened
   const pendingAutoOpen = useRef(null); // Track pending auto-open event ID
+  const eventIdToOpenRef = useRef(null); // Track eventId to open (for modal)
   const markerRefs = useRef({});
   const animationTimeouts = useRef([]);
 
@@ -193,6 +194,9 @@ export default function MapScreen({ navigation, route }) {
     (item) => {
       setFocusedItemId(item.id);
       setShowDetailModal(false);
+      // Clear pending flags khi user manually click marker
+      pendingAutoOpen.current = null;
+      eventIdToOpenRef.current = null;
 
       const newSelectedItem = {
         id: item.id,
@@ -219,6 +223,9 @@ export default function MapScreen({ navigation, route }) {
       // Close search results
       setShowSearchResults(false);
       Keyboard.dismiss();
+      // Clear pending flags khi user manually click search result
+      pendingAutoOpen.current = null;
+      eventIdToOpenRef.current = null;
 
       // Animate to item location
       const targetRegion = {
@@ -258,6 +265,10 @@ export default function MapScreen({ navigation, route }) {
     setShowDetailModal(false);
     setSelectedItem(null);
     pendingAutoOpen.current = null; // Clear pending flag
+    // Clear eventId ref khi đóng modal (sau khi đã đóng để đảm bảo không bị race condition)
+    setTimeout(() => {
+      eventIdToOpenRef.current = null;
+    }, 100);
 
     if (hasAutoOpenedDetail.current) {
       setFocusedItemId(null);
@@ -483,6 +494,7 @@ export default function MapScreen({ navigation, route }) {
       hasAutoOpenedDetail.current = true;
       lastAutoOpenEventId.current = targetEventId;
       pendingAutoOpen.current = targetEventId; // Set pending flag
+      eventIdToOpenRef.current = targetEventId; // Set ref ngay để DetailModal có eventId ngay cả khi selectedItem chưa commit
 
       // Set selectedItem trước khi mở modal để đảm bảo DetailModal có eventId
       setSelectedItem({
@@ -504,6 +516,7 @@ export default function MapScreen({ navigation, route }) {
         hasAutoOpenedDetail.current = true;
         lastAutoOpenEventId.current = targetEventId;
         pendingAutoOpen.current = targetEventId; // Set pending flag
+        eventIdToOpenRef.current = targetEventId; // Set ref ngay để DetailModal có eventId ngay cả khi selectedItem chưa commit
 
         // Set selectedItem trước khi mở modal
         setSelectedItem({
@@ -535,14 +548,22 @@ export default function MapScreen({ navigation, route }) {
       selectedItem.type === "event" &&
       !showDetailModal
     ) {
-      console.log("✅ [MapScreen] selectedItem ready, opening modal:", selectedItem.id);
+      const eventIdToOpen = pendingAutoOpen.current;
+      console.log("✅ [MapScreen] selectedItem ready, opening modal:", eventIdToOpen);
+
+      // Store eventId trong ref để dùng trong DetailModal prop (tránh race condition)
+      eventIdToOpenRef.current = eventIdToOpen;
       pendingAutoOpen.current = null; // Clear pending flag
 
-      // Đợi một chút để đảm bảo DetailModal đã mount và sẵn sàng
+      // Đợi một chút để đảm bảo DetailModal đã mount và selectedItem đã được React commit
+      // Không check selectedItem trong timeout (tránh stale closure), chỉ dùng ref
       const timeout1 = setTimeout(() => {
+        // Mở modal ngay - eventIdToOpenRef đã được set, DetailModal sẽ nhận eventId từ ref hoặc selectedItem
         const timeout2 = setTimeout(() => {
+          console.log("✅ [MapScreen] Opening modal with eventId from ref:", eventIdToOpenRef.current);
           setShowDetailModal(true);
-        }, 100);
+          // KHÔNG clear ref ở đây - chỉ clear khi modal đóng để đảm bảo eventId luôn có sẵn
+        }, 150);
         animationTimeouts.current.push(timeout2);
       }, ANIMATION_DELAYS.MODAL + 300);
       animationTimeouts.current.push(timeout1);
@@ -938,9 +959,22 @@ export default function MapScreen({ navigation, route }) {
           <DetailModal
             isVisible={showDetailModal}
             onClose={handleCloseDetailModal}
-            eventId={selectedItem?.type === "event" ? selectedItem.id : null}
+            eventId={
+              // Ưu tiên selectedItem.id (nếu có)
+              selectedItem?.type === "event" && selectedItem?.id
+                ? selectedItem.id
+                // Fallback: dùng eventIdToOpenRef nếu selectedItem chưa có (tránh race condition)
+                : eventIdToOpenRef.current
+                  ? eventIdToOpenRef.current
+                  // Fallback cuối: dùng route params
+                  : route?.params?.focusEventId && route?.params?.autoOpenDetail
+                    ? route.params.focusEventId
+                    : null
+            }
             locationId={
-              selectedItem?.type === "location" ? selectedItem.id : null
+              selectedItem?.type === "location" && selectedItem?.id
+                ? selectedItem.id
+                : null
             }
           />
         </View>
