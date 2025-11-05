@@ -13,23 +13,28 @@ import {
     Platform,
     Alert,
     Keyboard,
+    Modal,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { sendMessageToGemini, openLocationSettings } from "../services/geminiService";
+import { getEventById } from "../services/events";
 
 export default function ChatScreen({ navigation }) {
-    const [messages, setMessages] = useState([
-        {
-            id: "1",
-            text: "Xin chào! Tôi là trợ lý AI của ứng dụng DiChoiKhongLoHauQua. Tôi có thể giúp bạn tìm kiếm sự kiện, địa điểm hoặc trả lời các câu hỏi. Hãy hỏi tôi bất cứ điều gì! 👋",
-            role: "assistant",
-            timestamp: new Date(),
-        },
-    ]);
+    const initialMessage = {
+        id: "1",
+        text: "Xin chào! 🎉 Mình là Empathic AI Assistant của DiChoiKhongLoHauQua! ✨\n\nMình ở đây để giúp bạn tìm những sự kiện siêu hot gần bạn! 🔥\n\nChỉ cần hỏi mình thôi, mình sẽ không trả lời chung chung đâu. Mình sẽ gợi ý những sự kiện đang diễn ra hoặc sắp diễn ra gần vị trí của bạn luôn! 💜\n\nHỏi mình bất cứ gì nhé! Mình hiểu bạn hơn người yêu cũ đấy! 😎✨",
+        role: "assistant",
+        timestamp: new Date(),
+    };
+
+    const [messages, setMessages] = useState([initialMessage]);
     const [inputText, setInputText] = useState("");
     const [loading, setLoading] = useState(false);
     const flatListRef = useRef(null);
     const keyboardHeight = useRef(0);
+    const resetTimeoutRef = useRef(null);
+    const [showEventModal, setShowEventModal] = useState(false);
+    const [modalEvents, setModalEvents] = useState([]);
 
     // Tự động scroll xuống tin nhắn mới nhất
     useEffect(() => {
@@ -62,6 +67,15 @@ export default function ChatScreen({ navigation }) {
         return () => {
             keyboardDidShowListener.remove();
             keyboardDidHideListener.remove();
+        };
+    }, []);
+
+    // Cleanup timeout khi component unmount
+    useEffect(() => {
+        return () => {
+            if (resetTimeoutRef.current) {
+                clearTimeout(resetTimeoutRef.current);
+            }
         };
     }, []);
 
@@ -112,25 +126,114 @@ export default function ChatScreen({ navigation }) {
         } catch (error) {
             console.error("Chat error:", error);
 
+            // Xác định loại lỗi và tạo message phù hợp
+            let errorText = "";
+            const errorMessage = error?.message || "";
+
+            // Kiểm tra các loại lỗi phổ biến
+            if (errorMessage.includes("network") || errorMessage.includes("fetch") || errorMessage.includes("connection")) {
+                // Lỗi mạng
+                errorText = "Oops! 😅 Mình đang gặp vấn đề với kết nối mạng. Bạn kiểm tra lại WiFi/4G giúp mình nha, rồi thử lại sau vài giây nhé! 📶✨";
+            } else if (errorMessage.includes("timeout") || errorMessage.includes("timed out")) {
+                // Lỗi timeout
+                errorText = "Hmm, mình đang xử lý hơi lâu quá! ⏰ Bạn thử hỏi lại mình một lần nữa được không? Mình sẽ cố gắng trả lời nhanh hơn! 💪";
+            } else if (errorMessage.includes("API") || errorMessage.includes("Gemini") || errorMessage.includes("HTTP")) {
+                // Lỗi API
+                errorText = "Xin lỗi bạn nhé! 😔 Mình đang gặp chút vấn đề kỹ thuật. Bạn thử lại sau một chút được không? Mình sẽ cố gắng sửa lại ngay! 🔧💜";
+            } else if (errorMessage.includes("location") || errorMessage.includes("permission")) {
+                // Lỗi liên quan đến vị trí
+                errorText = "Mình không thể lấy vị trí của bạn được! 📍 Bạn kiểm tra giúp mình:\n\n1. Đã bật định vị trên điện thoại chưa?\n2. Đã cho phép ứng dụng truy cập vị trí chưa?\n\nSau đó thử lại nhé! ✨";
+            } else {
+                // Lỗi khác hoặc câu lệnh không xử lý được
+                errorText = "Xin lỗi bạn nhé! 😅 Mình chưa hiểu rõ yêu cầu này của bạn. Bạn có thể:\n\n" +
+                    "• Hỏi mình về sự kiện gần đây (ví dụ: \"Sự kiện cuối tuần\", \"Sự kiện gaming gần đây\")\n" +
+                    "• Hỏi về vị trí hiện tại của bạn\n" +
+                    "• Hoặc hỏi mình về chức năng của app\n\n" +
+                    "Mình sẽ cố gắng giúp bạn tốt nhất có thể! 💜✨";
+            }
+
             // Thêm tin nhắn lỗi
-            const errorMessage = {
+            const errorMessageObj = {
                 id: (Date.now() + 1).toString(),
-                text: `Xin lỗi, đã xảy ra lỗi: ${error.message}. Vui lòng thử lại sau.`,
+                text: errorText,
                 role: "assistant",
                 timestamp: new Date(),
                 isError: true,
             };
 
-            setMessages((prev) => [...prev, errorMessage]);
+            setMessages((prev) => [...prev, errorMessageObj]);
 
-            Alert.alert("Lỗi", "Không thể gửi tin nhắn. Vui lòng kiểm tra kết nối mạng và thử lại.");
+            // Chỉ hiển thị Alert cho lỗi nghiêm trọng
+            if (errorMessage.includes("network") || errorMessage.includes("connection")) {
+                Alert.alert("Lỗi kết nối", "Vui lòng kiểm tra kết nối mạng và thử lại.");
+            }
         } finally {
             setLoading(false);
         }
     };
 
-    const handleOpenMap = () => {
-        navigation.navigate("Map");
+    const handleOpenMap = async (searchResults) => {
+        if (!searchResults || searchResults.length === 0) {
+            // Nếu không có kết quả, chỉ navigate đến Map
+            navigation.navigate("Map");
+            return;
+        }
+
+        // Lọc các sự kiện (events) từ kết quả tìm kiếm
+        const events = searchResults.filter((result) => result.type === "event");
+
+        if (events.length === 0) {
+            // Nếu không có sự kiện nào, chỉ navigate đến Map
+            navigation.navigate("Map");
+            return;
+        }
+
+        if (events.length === 1) {
+            // Nếu chỉ có 1 sự kiện, lấy đầy đủ thông tin và navigate
+            const event = events[0];
+
+            // Lấy đầy đủ thông tin event từ Firestore
+            try {
+                const fullEventData = await getEventById(event.id);
+
+                if (fullEventData?.location?.lat && fullEventData?.location?.lng) {
+                    // Navigate với đầy đủ thông tin như EventsListScreen
+                    navigation.navigate("Map", {
+                        center: {
+                            latitude: fullEventData.location.lat,
+                            longitude: fullEventData.location.lng,
+                        },
+                        focusEventId: event.id,
+                        autoOpenDetail: true,
+                        eventData: {
+                            id: fullEventData.id,
+                            title: fullEventData.title || fullEventData.name,
+                            category: fullEventData.category,
+                            location: fullEventData.location,
+                            address: fullEventData.address,
+                            description: fullEventData.description,
+                        },
+                    });
+                } else {
+                    // Nếu không có location, chỉ navigate với focusEventId
+                    navigation.navigate("Map", {
+                        focusEventId: event.id,
+                        autoOpenDetail: true,
+                    });
+                }
+            } catch (error) {
+                console.error("Error getting event data:", error);
+                // Fallback: navigate với ID
+                navigation.navigate("Map", {
+                    focusEventId: event.id,
+                    autoOpenDetail: true,
+                });
+            }
+        } else {
+            // Nếu có nhiều sự kiện, hiển thị modal để người dùng chọn
+            setModalEvents(events);
+            setShowEventModal(true);
+        }
     };
 
     const handleOpenSettings = async () => {
@@ -147,6 +250,42 @@ export default function ChatScreen({ navigation }) {
 
     const handleQuickReply = (text) => {
         setInputText(text);
+    };
+
+    // Reset cuộc trò chuyện về ban đầu
+    const resetConversation = () => {
+        setMessages([{
+            ...initialMessage,
+            timestamp: new Date(),
+        }]);
+        setInputText("");
+        Keyboard.dismiss();
+    };
+
+    // Xử lý khi bắt đầu giữ nút gửi
+    const handleSendPressIn = () => {
+        // Nếu nút disabled, không làm gì
+        if (loading || !inputText.trim()) return;
+
+        // Bắt đầu đếm 2 giây
+        resetTimeoutRef.current = setTimeout(() => {
+            // Sau 2 giây, reset cuộc trò chuyện
+            resetConversation();
+            Alert.alert(
+                "Đã reset",
+                "Cuộc trò chuyện đã được reset về ban đầu.",
+                [{ text: "OK" }]
+            );
+        }, 2000); // 2 giây
+    };
+
+    // Xử lý khi thả nút gửi
+    const handleSendPressOut = () => {
+        // Nếu chưa đến 2 giây, hủy timeout và gửi tin nhắn bình thường
+        if (resetTimeoutRef.current) {
+            clearTimeout(resetTimeoutRef.current);
+            resetTimeoutRef.current = null;
+        }
     };
 
     const renderMessage = ({ item }) => {
@@ -185,7 +324,7 @@ export default function ChatScreen({ navigation }) {
                     {hasSearchResults && !isUser && (
                         <TouchableOpacity
                             style={styles.mapButton}
-                            onPress={handleOpenMap}
+                            onPress={() => handleOpenMap(item.searchResults)}
                         >
                             <Ionicons name="map-outline" size={16} color="#8E2DE2" />
                             <Text style={styles.mapButtonText}>Xem trên bản đồ</Text>
@@ -217,7 +356,7 @@ export default function ChatScreen({ navigation }) {
                         <Text style={styles.avatarText}>🤖</Text>
                     </View>
                     <View style={styles.headerText}>
-                        <Text style={styles.headerTitle}>AI Assistant</Text>
+                        <Text style={styles.headerTitle}>Empathic AI Assistant</Text>
                         <Text style={styles.headerSubtitle}>
                             {loading ? "Đang suy nghĩ..." : "Sẵn sàng hỗ trợ"}
                         </Text>
@@ -258,41 +397,27 @@ export default function ChatScreen({ navigation }) {
                     <View style={styles.quickRepliesRow}>
                         <TouchableOpacity
                             style={styles.quickReplyChip}
-                            onPress={() => handleQuickReply("Tìm quán cafe ở gần 5km")}
+                            onPress={() => handleQuickReply("Sự kiện nào đang diễn ra gần đây?")}
                         >
-                            <Text style={styles.quickReplyText}>☕ Cafe gần đây</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={styles.quickReplyChip}
-                            onPress={() => handleQuickReply("Quán bida nào gần đây?")}
-                        >
-                            <Text style={styles.quickReplyText}>🎱 Quán bida</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={styles.quickReplyChip}
-                            onPress={() => handleQuickReply("Tìm quán net gần đây")}
-                        >
-                            <Text style={styles.quickReplyText}>💻 Quán net</Text>
-                        </TouchableOpacity>
-                    </View>
-                    <View style={styles.quickRepliesRow}>
-                        <TouchableOpacity
-                            style={styles.quickReplyChip}
-                            onPress={() => handleQuickReply("Nhà hàng nào gần đây?")}
-                        >
-                            <Text style={styles.quickReplyText}>🍽️ Nhà hàng</Text>
+                            <Text style={styles.quickReplyText}>🎉 Sự kiện hot</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={styles.quickReplyChip}
                             onPress={() => handleQuickReply("Sự kiện âm nhạc cuối tuần")}
                         >
-                            <Text style={styles.quickReplyText}>🎵 Sự kiện</Text>
+                            <Text style={styles.quickReplyText}>🎵 Sự kiện âm nhạc</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={styles.quickReplyChip}
-                            onPress={() => handleQuickReply("Sự kiện nào đang diễn ra gần đây?")}
+                            onPress={() => handleQuickReply("Sự kiện party cuối tuần")}
                         >
-                            <Text style={styles.quickReplyText}>🎉 Sự kiện hot</Text>
+                            <Text style={styles.quickReplyText}>🎊 Party</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.quickReplyChip}
+                            onPress={() => handleQuickReply("Sự kiện thể thao gần đây")}
+                        >
+                            <Text style={styles.quickReplyText}>⚽ Sự kiện thể thao</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -312,6 +437,8 @@ export default function ChatScreen({ navigation }) {
                 <TouchableOpacity
                     style={[styles.sendButton, (loading || !inputText.trim()) && styles.sendButtonDisabled]}
                     onPress={handleSend}
+                    onPressIn={handleSendPressIn}
+                    onPressOut={handleSendPressOut}
                     disabled={loading || !inputText.trim()}
                 >
                     {loading ? (
@@ -321,6 +448,140 @@ export default function ChatScreen({ navigation }) {
                     )}
                 </TouchableOpacity>
             </View>
+
+            {/* Modal chọn sự kiện */}
+            <Modal
+                visible={showEventModal}
+                transparent={true}
+                animationType="slide"
+                onRequestClose={() => setShowEventModal(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Chọn sự kiện</Text>
+                            <TouchableOpacity
+                                onPress={() => setShowEventModal(false)}
+                                style={styles.modalCloseButton}
+                            >
+                                <Ionicons name="close" size={24} color="#666" />
+                            </TouchableOpacity>
+                        </View>
+                        <Text style={styles.modalSubtitle}>
+                            Tìm thấy {modalEvents.length} sự kiện. Bạn muốn xem sự kiện nào?
+                        </Text>
+                        <FlatList
+                            data={modalEvents}
+                            keyExtractor={(item) => item.id}
+                            renderItem={({ item, index }) => (
+                                <TouchableOpacity
+                                    style={styles.modalEventItem}
+                                    onPress={async () => {
+                                        setShowEventModal(false);
+
+                                        // Lấy đầy đủ thông tin event từ Firestore
+                                        try {
+                                            const fullEventData = await getEventById(item.id);
+
+                                            if (fullEventData?.location?.lat && fullEventData?.location?.lng) {
+                                                // Navigate với đầy đủ thông tin như EventsListScreen
+                                                navigation.navigate("Map", {
+                                                    center: {
+                                                        latitude: fullEventData.location.lat,
+                                                        longitude: fullEventData.location.lng,
+                                                    },
+                                                    focusEventId: item.id,
+                                                    autoOpenDetail: true,
+                                                    // Pass the event data directly to avoid race condition
+                                                    eventData: {
+                                                        id: fullEventData.id,
+                                                        title: fullEventData.title || fullEventData.name,
+                                                        category: fullEventData.category,
+                                                        location: fullEventData.location,
+                                                        address: fullEventData.address,
+                                                        description: fullEventData.description,
+                                                    },
+                                                });
+                                            } else {
+                                                // Nếu không có location, chỉ navigate với focusEventId
+                                                navigation.navigate("Map", {
+                                                    focusEventId: item.id,
+                                                    autoOpenDetail: true,
+                                                });
+                                            }
+                                        } catch (error) {
+                                            console.error("Error getting event data:", error);
+                                            // Fallback: navigate với ID
+                                            navigation.navigate("Map", {
+                                                focusEventId: item.id,
+                                                autoOpenDetail: true,
+                                            });
+                                        }
+                                    }}
+                                >
+                                    <View style={styles.modalEventContent}>
+                                        <Text style={styles.modalEventNumber}>{index + 1}</Text>
+                                        <View style={styles.modalEventInfo}>
+                                            <Text style={styles.modalEventName} numberOfLines={2}>
+                                                {item.name}
+                                            </Text>
+                                            <Text style={styles.modalEventDistance}>
+                                                {item.distance} • {item.category}
+                                            </Text>
+                                        </View>
+                                        <Ionicons name="chevron-forward" size={20} color="#8E2DE2" />
+                                    </View>
+                                </TouchableOpacity>
+                            )}
+                            style={styles.modalEventList}
+                            showsVerticalScrollIndicator={true}
+                        />
+                        <TouchableOpacity
+                            style={styles.modalViewAllButton}
+                            onPress={async () => {
+                                setShowEventModal(false);
+
+                                if (modalEvents.length > 0) {
+                                    const firstEvent = modalEvents[0];
+
+                                    // Lấy đầy đủ thông tin event đầu tiên
+                                    try {
+                                        const fullEventData = await getEventById(firstEvent.id);
+
+                                        if (fullEventData?.location?.lat && fullEventData?.location?.lng) {
+                                            navigation.navigate("Map", {
+                                                center: {
+                                                    latitude: fullEventData.location.lat,
+                                                    longitude: fullEventData.location.lng,
+                                                },
+                                                focusEventId: firstEvent.id,
+                                                autoOpenDetail: false,
+                                            });
+                                        } else {
+                                            navigation.navigate("Map", {
+                                                focusEventId: firstEvent.id,
+                                                autoOpenDetail: false,
+                                            });
+                                        }
+                                    } catch (error) {
+                                        console.error("Error getting event data:", error);
+                                        navigation.navigate("Map", {
+                                            focusEventId: firstEvent.id,
+                                            autoOpenDetail: false,
+                                        });
+                                    }
+                                } else {
+                                    // Nếu không có events, chỉ navigate đến Map
+                                    navigation.navigate("Map");
+                                }
+                            }}
+                        >
+                            <Ionicons name="map-outline" size={20} color="#fff" />
+                            <Text style={styles.modalViewAllText}>Xem tất cả trên bản đồ</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
         </KeyboardAvoidingView>
     );
 }
@@ -541,5 +802,97 @@ const styles = StyleSheet.create({
     sendButtonDisabled: {
         backgroundColor: "#ccc",
         opacity: 0.6,
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: "rgba(0, 0, 0, 0.5)",
+        justifyContent: "flex-end",
+    },
+    modalContent: {
+        backgroundColor: "#fff",
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        maxHeight: "80%",
+        paddingBottom: Platform.OS === "ios" ? 30 : 20,
+    },
+    modalHeader: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        paddingHorizontal: 20,
+        paddingTop: 20,
+        paddingBottom: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: "#eee",
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: "700",
+        color: "#222",
+    },
+    modalCloseButton: {
+        padding: 4,
+    },
+    modalSubtitle: {
+        fontSize: 14,
+        color: "#666",
+        paddingHorizontal: 20,
+        paddingTop: 12,
+        paddingBottom: 8,
+    },
+    modalEventList: {
+        maxHeight: 400,
+    },
+    modalEventItem: {
+        paddingHorizontal: 20,
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: "#f0f0f0",
+    },
+    modalEventContent: {
+        flexDirection: "row",
+        alignItems: "center",
+    },
+    modalEventNumber: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: "#8E2DE2",
+        color: "#fff",
+        fontSize: 14,
+        fontWeight: "700",
+        textAlign: "center",
+        textAlignVertical: "center",
+        marginRight: 12,
+    },
+    modalEventInfo: {
+        flex: 1,
+        marginRight: 8,
+    },
+    modalEventName: {
+        fontSize: 15,
+        fontWeight: "600",
+        color: "#222",
+        marginBottom: 4,
+    },
+    modalEventDistance: {
+        fontSize: 13,
+        color: "#666",
+    },
+    modalViewAllButton: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: "#8E2DE2",
+        marginHorizontal: 20,
+        marginTop: 12,
+        paddingVertical: 14,
+        borderRadius: 12,
+    },
+    modalViewAllText: {
+        color: "#fff",
+        fontSize: 16,
+        fontWeight: "600",
+        marginLeft: 8,
     },
 });

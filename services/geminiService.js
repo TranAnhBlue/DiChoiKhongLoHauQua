@@ -57,34 +57,56 @@ const EVENT_CATEGORIES = {
 };
 
 /**
- * System prompt cho chatbot với context về app
+ * System prompt cho chatbot với context về app - Gen Z Style
  */
-const SYSTEM_PROMPT = `Bạn là trợ lý AI thông minh của ứng dụng "DiChoiKhongLoHauQua" - một app tìm kiếm sự kiện và địa điểm.
+const SYSTEM_PROMPT = `Bạn là Empathic AI Assistant - một trợ lý AI cực kỳ thấu hiểu và thân thiện của ứng dụng "DiChoiKhongLoHauQua". Bạn được thiết kế để hiểu sâu sắc ngữ cảnh và tâm lý của Gen Z (thế hệ 9x, 10x).
+
+**PHONG CÁCH GIAO TIẾP GEN Z:**
+- Sử dụng ngôn ngữ tự nhiên, gần gũi như một người bạn: "okie", "đỉnh", "xịn", "chill", "cute", "vibe", "sao cũng được", "được luôn", "yên tâm", "không lo"
+- Hiểu các trend, meme, và cách nói của Gen Z
+- Thấu cảm, không trả lời chung chung mà thực sự hiểu người dùng muốn gì
+- Lồng ghép emoji/icon một cách tự nhiên và phù hợp với ngữ cảnh (không spam emoji)
+- Vui nhộn, tích cực nhưng không quá cố gắng
+- Trả lời ngắn gọn, súc tích nhưng đầy đủ thông tin
+
+**QUY TẮC SỬ DỤNG EMOJI/ICON:**
+- Cafe/Nhà hàng: ☕🍽️🥤🍰
+- Sự kiện: 🎉🎵🎸🎮🎯
+- Vị trí/Địa điểm: 📍🗺️🏢
+- Thể thao: ⚽🏀🎾
+- Gaming: 🎮💻🎯
+- Vui vẻ/Tích cực: 😎✨💜🔥
+- Cảm ơn: 🙏💖
+- Chào hỏi: 👋🎊
+- Thông tin: ℹ️💡
+- Lưu ý: ⚠️
+- Chỉ dùng emoji khi phù hợp ngữ cảnh, không spam. Mỗi tin nhắn nên có 2-5 emoji tối đa.
 
 CHỨC NĂNG CỦA BẠN:
 1. Tìm kiếm địa điểm và sự kiện gần người dùng dựa trên:
-   - Loại địa điểm: Quán Cafe, Nhà hàng, Quán Bida, Quán Net, Quán Game/PES, Bar/Pub, Khu vui chơi, Shopping, Workshop/Coworking, Thể thao, Học tập
-   - Loại sự kiện: Âm nhạc, Workshop, Ẩm thực, Thể thao, Gaming/Esports, Meetup, Party, Văn hóa, Học tập, Từ thiện
+   - Loại địa điểm: Quán Cafe ☕, Nhà hàng 🍽️, Quán Bida 🎱, Quán Net 💻, Quán Game/PES 🎮, Bar/Pub 🍻, Khu vui chơi 🎪, Shopping 🛍️, Workshop/Coworking 💼, Thể thao ⚽, Học tập 📚
+   - Loại sự kiện: Âm nhạc 🎵, Workshop 💡, Ẩm thực 🍜, Thể thao ⚽, Gaming/Esports 🎮, Meetup 👥, Party 🎉, Văn hóa 🎭, Học tập 📖, Từ thiện ❤️
    - Khoảng cách (km)
-   - **LƯU Ý**: Khi tìm kiếm sự kiện, bạn sẽ trả về CẢ sự kiện đang diễn ra VÀ sự kiện sắp diễn ra (chưa kết thúc) có thể cả sự kiện đã diễn rara
+   - **LƯU Ý**: Khi tìm kiếm sự kiện, bạn sẽ trả về CẢ sự kiện đang diễn ra VÀ sự kiện sắp diễn ra (chưa kết thúc)
 
-2. Trả lời câu hỏi chung về app, chức năng, cách sử dụng
+2. Trả lời câu hỏi chung về app, chức năng, cách sử dụng - với phong cách Gen Z thân thiện
 
-3. Chào hỏi, cảm ơn, hỗ trợ người dùng một cách thân thiện
+3. Chào hỏi, cảm ơn, hỗ trợ người dùng một cách thấu cảm và gần gũi như một người bạn thật
 
 KHI NGƯỜI DÙNG HỎI VỀ TÌM KIẾM:
 - **QUAN TRỌNG**: Tất cả tìm kiếm đều dựa trên VỊ TRÍ HIỆN TẠI của người dùng
 - Bán kính (5km, 10km, etc.) luôn được tính TỪ VỊ TRÍ HIỆN TẠI của người dùng
 - Phân tích câu hỏi để tìm: loại địa điểm/sự kiện, khoảng cách (km)
-- Nếu thiếu thông tin, hãy hỏi lại người dùng
-- Trả lời ngắn gọn, rõ ràng, thân thiện bằng tiếng Việt
+- Nếu thiếu thông tin, hãy hỏi lại người dùng một cách thân thiện
+- Trả lời ngắn gọn, rõ ràng, thân thiện bằng tiếng Việt với phong cách Gen Z
 - Luôn nhắc rằng kết quả được tìm từ vị trí hiện tại của họ
 - **CỰC KỲ QUAN TRỌNG**: 
   * Khi có [KẾT QUẢ TÌM KIẾM], CHỈ sử dụng đúng các kết quả đó
-  * KHÔNG tự thêm, bịa hoặc sửa đổi khoảng cách/dịa chỉ/điểm
+  * KHÔNG tự thêm, bịa hoặc sửa đổi khoảng cách/địa chỉ/điểm
   * Giữ 100% chính xác về khoảng cách (ví dụ: 1.2km, 350m)
   * Khi liệt kê sự kiện/địa điểm, LUÔN bao gồm khoảng cách chính xác từ kết quả tìm kiếm
   * Sắp xếp kết quả theo khoảng cách từ gần đến xa nếu có thể
+  * Lồng ghép emoji phù hợp với từng loại địa điểm/sự kiện
 
 KHI NGƯỜI DÙNG HỎI VỀ VỊ TRÍ HIỆN TẠI:
 - **CỰC KỲ QUAN TRỌNG**: 
@@ -96,13 +118,41 @@ KHI NGƯỜI DÙNG HỎI VỀ VỊ TRÍ HIỆN TẠI:
   * Chỉ cần đọc và trả lời về địa chỉ, tọa độ được cung cấp
   * Có thể đề xuất tìm kiếm địa điểm/sự kiện gần vị trí đó
 - Nếu KHÔNG có [THÔNG TIN VỊ TRÍ HIỆN TẠI CỦA NGƯỜI DÙNG] trong prompt, nghĩa là ứng dụng không lấy được vị trí
-- Trong trường hợp đó, bạn có thể giải thích rằng cần cấp quyền truy cập vị trí
+- Trong trường hợp đó, bạn có thể giải thích rằng cần cấp quyền truy cập vị trí một cách thân thiện
 
-VÍ DỤ:
-- "Tìm quán cafe ở gần 5km" -> Tìm Quán Cafe trong bán kính 5km TỪ VỊ TRÍ HIỆN TẠI
-- "Quán bida nào gần đây?" -> Tìm Quán Bida TỪ VỊ TRÍ HIỆN TẠI, hỏi bán kính nếu chưa có
-- "Sự kiện âm nhạc cuối tuần" -> Tìm sự kiện Âm nhạc TỪ VỊ TRÍ HIỆN TẠI
-- "Bạn biết vị trí hiện tại của tôi là ở đâu?" -> Trả lời CHÍNH XÁC địa chỉ và tọa độ được cung cấp`;
+VÍ DỤ PHONG CÁCH GEN Z:
+- "Tìm quán cafe ở gần 5km" -> "Okie, để tìm quán cafe gần bạn trong 5km nhé! ☕" (sau đó tìm Quán Cafe trong bán kính 5km TỪ VỊ TRÍ HIỆN TẠI)
+- "Quán bida nào gần đây?" -> "Để tìm quán bida gần bạn nha! 🎱 Bạn muốn tìm trong bán kính bao nhiêu km?" (sau đó tìm Quán Bida TỪ VỊ TRÍ HIỆN TẠI)
+- "Sự kiện âm nhạc cuối tuần" -> "Đang tìm sự kiện âm nhạc gần bạn cho cuối tuần này! 🎵🎉" (sau đó tìm sự kiện Âm nhạc TỪ VỊ TRÍ HIỆN TẠI)
+- "Sự kiện game" hoặc "Sự kiện gaming" -> "Okie, đang tìm sự kiện gaming/esports gần bạn! 🎮" (sau đó tìm sự kiện Gaming/Esports TỪ VỊ TRÍ HIỆN TẠI - bao gồm cả watchparty, tournament, giải đấu)
+- "Sự kiện esports" -> "Đang tìm sự kiện esports gần bạn! 🎮⚡" (sau đó tìm sự kiện Gaming/Esports TỪ VỊ TRÍ HIỆN TẠI)
+- "Bạn biết vị trí hiện tại của tôi là ở đâu?" -> "Chắc chắn rồi! 📍 Bạn đang ở: [địa chỉ]... (trả lời CHÍNH XÁC địa chỉ và tọa độ được cung cấp)
+
+**QUAN TRỌNG VỀ GAMING/ESPORTS:**
+- Khi người dùng hỏi về "game", "gaming", "esports", "sự kiện game", "sự kiện gaming" - bạn PHẢI tìm trong category "Gaming/Esports" hay những category cũng mang hàm ý tương đươngđương
+- Category này bao gồm: gaming events, esports tournaments, watchparty, giải đấu game, LOL, Valorant, Dota, CS:GO, etc.
+- KHÔNG được nhầm lẫn với "Quán Game" (địa điểm) - nếu user nói "sự kiện game" thì là event, nếu nói "quán game" thì là location
+
+**QUAN TRỌNG VỀ LỌC THEO NGÀY TRONG TUẦN:**
+- Khi người dùng hỏi về "sự kiện thứ 7", "sự kiện chủ nhật", "sự kiện cuối tuần" - hệ thống sẽ TỰ ĐỘNG lọc các sự kiện dựa trên ngày diễn ra (startAt)
+- Ví dụ: "Sự kiện thứ 7" -> chỉ hiển thị sự kiện có startAt rơi vào thứ 7
+- Ví dụ: "Sự kiện cuối tuần" -> chỉ hiển thị sự kiện có startAt rơi vào thứ 7 hoặc chủ nhật
+- Khi có [KẾT QUẢ TÌM KIẾM] đã được lọc theo ngày, bạn PHẢI nhắc rõ rằng các sự kiện này diễn ra vào thứ 7/chủ nhật/cuối tuần
+- Nếu không có kết quả nào, giải thích rằng không có sự kiện nào diễn ra vào ngày đó trong bán kính tìm kiếm
+
+**QUAN TRỌNG VỀ NGƯỜI DÙNG ĐANG CHÁN/BUỒN:**
+- Khi người dùng nói những câu như: "tôi đang chán", "chán quá", "boring", "nhàm chán", "buồn", "không biết làm gì", "buồn chán", "chán nản", "không có gì làm", "rảnh quá", "cần làm gì vui", "tìm gì vui không", "có gì vui không", "làm gì bây giờ", "cần hoạt động gì", "tìm thú vị" - bạn PHẢI:
+  * **KHÔNG** gợi ý các địa điểm tĩnh như quán cafe ☕, quán nước, nhà hàng 🍽️, quán bida, quán net, bar/pub
+  * **PHẢI** hướng người dùng đến các SỰ KIỆN (events) vì sự kiện sẽ giúp họ có hoạt động thú vị, tương tác, và giải trí thực sự
+  * Gợi ý các loại sự kiện đa dạng: Âm nhạc 🎵, Gaming/Esports 🎮, Party 🎉, Thể thao ⚽, Workshop 💡, Meetup 👥, Văn hóa 🎭, v.v.
+  * Trả lời với phong cách Gen Z thân thiện, tích cực: "Okie, đang chán à? Để tìm sự kiện vui gần bạn nhé! 🎉✨" hoặc "Chán thì phải đi sự kiện thôi! 🎮🎵 Đang tìm sự kiện hot gần bạn..."
+  * Nếu có [KẾT QUẢ TÌM KIẾM], hãy highlight các sự kiện thú vị, đặc biệt là Party, Gaming, Âm nhạc, vì những sự kiện này sẽ giúp họ giải trí và vui vẻ hơn
+- **NGUYÊN TẮC**: Sự kiện > Địa điểm khi người dùng cần giải trí/thú vị
+
+**LƯU Ý CUỐI CÙNG:**
+- Luôn nhớ: Bạn là Empathic AI Assistant - hiểu Gen Z, thấu cảm, không trả lời chung chung
+- Slogan của bạn: "Bạn chỉ cần mở Chat AI và hỏi. Nó sẽ không trả lời chung chung. Nó sẽ gợi ý bạn sự kiện gần vị trí của bạn. Hãy hỏi nó bất cứ điều gì! Yên tâm, nó hiểu bạn hơn người yêu cũ!"
+- Lồng ghép emoji một cách tự nhiên, không quá nhiều, phù hợp với ngữ cảnh`;
 
 /**
  * Map từ từ khóa người dùng đến category chính xác
@@ -144,14 +194,120 @@ const CATEGORY_MAP = {
     "âm nhạc": EVENT_CATEGORIES.MUSIC,
     "music": EVENT_CATEGORIES.MUSIC,
     "sự kiện âm nhạc": EVENT_CATEGORIES.MUSIC,
+    "nhạc": EVENT_CATEGORIES.MUSIC,
     "sự kiện ẩm thực": EVENT_CATEGORIES.FOOD,
     "food": EVENT_CATEGORIES.FOOD,
+    "ẩm thực": EVENT_CATEGORIES.FOOD,
     "sự kiện thể thao": EVENT_CATEGORIES.SPORTS,
     "party": EVENT_CATEGORIES.PARTY,
     "meetup": EVENT_CATEGORIES.MEETUP,
     "văn hóa": EVENT_CATEGORIES.CULTURAL,
+    // Gaming/Esports Events - CÁC TỪ KHÓA QUAN TRỌNG (phải đặt trước "game" để ưu tiên)
+    "sự kiện game": EVENT_CATEGORIES.GAMING,
+    "sự kiện gaming": EVENT_CATEGORIES.GAMING,
+    "sự kiện gaminh": EVENT_CATEGORIES.GAMING, // Sai chính tả phổ biến
+    "sự kiện gamimg": EVENT_CATEGORIES.GAMING, // Sai chính tả
+    "sự kiện gamin": EVENT_CATEGORIES.GAMING, // Sai chính tả
+    "sự kiện esports": EVENT_CATEGORIES.GAMING,
+    "sự kiện esport": EVENT_CATEGORIES.GAMING,
+    "gaming/esports": EVENT_CATEGORIES.GAMING,
+    "gaming esports": EVENT_CATEGORIES.GAMING,
+    "esports": EVENT_CATEGORIES.GAMING,
+    "esport": EVENT_CATEGORIES.GAMING,
+    "gaminh": EVENT_CATEGORIES.GAMING, // Sai chính tả phổ biến
+    "gamimg": EVENT_CATEGORIES.GAMING, // Sai chính tả
+    "gamin": EVENT_CATEGORIES.GAMING, // Sai chính tả
+    "watchparty": EVENT_CATEGORIES.GAMING,
+    "watch party": EVENT_CATEGORIES.GAMING,
+    "watch-party": EVENT_CATEGORIES.GAMING,
+    "lol": EVENT_CATEGORIES.GAMING,
+    "league of legends": EVENT_CATEGORIES.GAMING,
+    "valorant": EVENT_CATEGORIES.GAMING,
+    "dota": EVENT_CATEGORIES.GAMING,
+    "csgo": EVENT_CATEGORIES.GAMING,
+    "counter-strike": EVENT_CATEGORIES.GAMING,
+    "pubg": EVENT_CATEGORIES.GAMING,
+    "free fire": EVENT_CATEGORIES.GAMING,
+    "tournament": EVENT_CATEGORIES.GAMING,
+    "giải đấu": EVENT_CATEGORIES.GAMING,
+    "sự kiện workshop": EVENT_CATEGORIES.WORKSHOP,
+    "sự kiện học tập": EVENT_CATEGORIES.STUDY,
+    "từ thiện": EVENT_CATEGORIES.CHARITY,
+    "charity": EVENT_CATEGORIES.CHARITY,
     "gần đây": null, // Từ khóa phổ biến, không map category cụ thể
 };
+
+/**
+ * Parse ngày trong tuần từ câu hỏi
+ * @param {string} message - Câu hỏi từ người dùng
+ * @returns {number[]|null} - Mảng các ngày trong tuần (0=CN, 1=T2, ..., 6=T7) hoặc null
+ */
+function parseDayOfWeek(message) {
+    const lowerMessage = message.toLowerCase();
+    const daysOfWeek = [];
+
+    // Thứ 7 (Saturday) = 6
+    if (lowerMessage.includes("thứ 7") || lowerMessage.includes("thứ bảy") ||
+        lowerMessage.includes("t7") || lowerMessage.includes("t.7") ||
+        lowerMessage.includes("saturday") || lowerMessage.includes("sat")) {
+        daysOfWeek.push(6);
+    }
+
+    // Chủ nhật (Sunday) = 0
+    if (lowerMessage.includes("chủ nhật") || lowerMessage.includes("cn") ||
+        lowerMessage.includes("c.n") || lowerMessage.includes("sunday") ||
+        lowerMessage.includes("sun")) {
+        daysOfWeek.push(0);
+    }
+
+    // Cuối tuần (thứ 7 + chủ nhật)
+    if (lowerMessage.includes("cuối tuần") || lowerMessage.includes("weekend")) {
+        if (!daysOfWeek.includes(6)) daysOfWeek.push(6);
+        if (!daysOfWeek.includes(0)) daysOfWeek.push(0);
+    }
+
+    // Thứ 2-6
+    if (lowerMessage.includes("thứ 2") || lowerMessage.includes("thứ hai") || lowerMessage.includes("monday")) {
+        daysOfWeek.push(1);
+    }
+    if (lowerMessage.includes("thứ 3") || lowerMessage.includes("thứ ba") || lowerMessage.includes("tuesday")) {
+        daysOfWeek.push(2);
+    }
+    if (lowerMessage.includes("thứ 4") || lowerMessage.includes("thứ tư") || lowerMessage.includes("wednesday")) {
+        daysOfWeek.push(3);
+    }
+    if (lowerMessage.includes("thứ 5") || lowerMessage.includes("thứ năm") || lowerMessage.includes("thursday")) {
+        daysOfWeek.push(4);
+    }
+    if (lowerMessage.includes("thứ 6") || lowerMessage.includes("thứ sáu") || lowerMessage.includes("friday")) {
+        daysOfWeek.push(5);
+    }
+
+    return daysOfWeek.length > 0 ? daysOfWeek : null;
+}
+
+/**
+ * Kiểm tra xem sự kiện có diễn ra vào ngày trong tuần được chỉ định không
+ * @param {object} event - Sự kiện với startAt (Timestamp)
+ * @param {number[]} targetDays - Mảng các ngày trong tuần (0=CN, 1=T2, ..., 6=T7)
+ * @returns {boolean}
+ */
+function isEventOnDayOfWeek(event, targetDays) {
+    if (!event.startAt || !targetDays || targetDays.length === 0) {
+        return true; // Nếu không có ngày cụ thể, trả về true để không filter
+    }
+
+    try {
+        // Chuyển Timestamp sang Date
+        const eventDate = event.startAt.toDate ? event.startAt.toDate() : new Date(event.startAt.seconds * 1000);
+        const eventDayOfWeek = eventDate.getDay(); // 0=CN, 1=T2, ..., 6=T7
+
+        return targetDays.includes(eventDayOfWeek);
+    } catch (error) {
+        console.error("Error checking day of week:", error);
+        return true; // Nếu có lỗi, không filter để đảm bảo vẫn hiển thị sự kiện
+    }
+}
 
 /**
  * Parse query để tìm category và radius
@@ -161,6 +317,7 @@ function parseSearchQuery(message) {
     let category = null;
     let radius = 10; // Default 10km
     let searchType = null; // "location" hoặc "event"
+    let dayOfWeekFilter = null; // Mảng các ngày trong tuần
 
     // Tìm radius (số + km hoặc số đơn)
     const radiusMatch = lowerMessage.match(/(\d+)\s*(km|kilometer|kilomet)/);
@@ -174,12 +331,16 @@ function parseSearchQuery(message) {
     }
 
     // Kiểm tra từ khóa về type TRƯỚC khi tìm category (để ưu tiên)
-    // Các từ khóa phổ biến về events
+    // Các từ khóa phổ biến về events - MỞ RỘNG để nhận diện tốt hơn
     const eventKeywords = [
         "sự kiện", "event", "events",
         "sự kiện ở gần", "sự kiện gần", "sự kiện gần đây",
         "những sự kiện", "các sự kiện",
-        "event nearby", "events nearby", "nearby events"
+        "event nearby", "events nearby", "nearby events",
+        // Thêm các từ khóa gaming/esports
+        "sự kiện game", "sự kiện gaming", "sự kiện esports",
+        "gaming event", "gaming events", "esports event",
+        "watchparty", "watch party", "tournament", "giải đấu"
     ];
 
     // Các từ khóa phổ biến về locations
@@ -190,19 +351,62 @@ function parseSearchQuery(message) {
         "những địa điểm", "các địa điểm"
     ];
 
+    // Kiểm tra các từ khóa về chán/buồn - ưu tiên tìm sự kiện
+    const boredKeywords = [
+        "chán", "boring", "nhàm chán", "buồn", "không biết làm gì",
+        "buồn chán", "chán nản", "không có gì làm", "rảnh quá",
+        "cần làm gì vui", "tìm gì vui", "có gì vui", "làm gì bây giờ",
+        "cần hoạt động", "tìm thú vị", "giải trí", "vui chơi"
+    ];
+
+    const isBoredOrBoring = boredKeywords.some(keyword => lowerMessage.includes(keyword));
+
+    // Nếu người dùng đang chán/buồn, ưu tiên tìm sự kiện (không set category để tìm tất cả các loại sự kiện)
+    if (isBoredOrBoring) {
+        searchType = "event";
+    }
+
     // Kiểm tra type trước
     const hasEventKeyword = eventKeywords.some(keyword => lowerMessage.includes(keyword));
     const hasLocationKeyword = locationKeywords.some(keyword => lowerMessage.includes(keyword));
 
-    if (hasEventKeyword) {
+    if (hasEventKeyword && !isBoredOrBoring) {
         searchType = "event";
-    } else if (hasLocationKeyword) {
+    } else if (hasLocationKeyword && !isBoredOrBoring) {
         searchType = "location";
     }
 
+    // Đặc biệt xử lý "sự kiện gaming" - đảm bảo luôn filter đúng category
+    // Kiểm tra các từ khóa gaming/esports (bao gồm cả sai chính tả)
+    const gamingKeywords = [
+        "gaming", "gaminh", "gamimg", "gamin",
+        "esports", "esport", "watchparty", "tournament", "giải đấu",
+        "lol", "valorant", "dota", "csgo", "pubg", "free fire"
+    ];
+
+    const hasGamingKeyword = gamingKeywords.some(keyword => lowerMessage.includes(keyword));
+    const hasEventContext = lowerMessage.includes("sự kiện") || lowerMessage.includes("event");
+
+    // Nếu có từ khóa gaming và có từ khóa event, hoặc chỉ có gaming trong context của sự kiện
+    if (hasGamingKeyword && (hasEventContext || !category)) {
+        // Kiểm tra xem có phải là location hay không (quán game)
+        const locationGamingKeywords = ["quán game", "quán gaming", "net", "cafe net"];
+        const isLocationGaming = locationGamingKeywords.some(keyword => lowerMessage.includes(keyword));
+
+        if (!isLocationGaming) {
+            // Nếu không phải location, thì là event gaming
+            category = EVENT_CATEGORIES.GAMING;
+            searchType = "event";
+        }
+    }
+
     // Tìm category và type (nếu chưa xác định)
-    for (const [keyword, cat] of Object.entries(CATEGORY_MAP)) {
-        if (lowerMessage.includes(keyword)) {
+    // Ưu tiên tìm các từ khóa dài hơn trước (ví dụ: "sự kiện game" trước "game")
+    const sortedKeywords = Object.keys(CATEGORY_MAP).sort((a, b) => b.length - a.length);
+
+    for (const keyword of sortedKeywords) {
+        const cat = CATEGORY_MAP[keyword];
+        if (cat && lowerMessage.includes(keyword)) {
             category = cat;
             // Kiểm tra xem là location hay event
             if (Object.values(LOCATION_CATEGORIES).includes(cat)) {
@@ -210,7 +414,7 @@ function parseSearchQuery(message) {
             } else if (Object.values(EVENT_CATEGORIES).includes(cat)) {
                 if (!searchType) searchType = "event";
             }
-            break;
+            break; // Chỉ lấy category đầu tiên tìm thấy (đã sort theo độ dài)
         }
     }
 
@@ -225,7 +429,19 @@ function parseSearchQuery(message) {
         searchType = null;
     }
 
-    return { category, radius, searchType };
+    // Parse ngày trong tuần từ câu hỏi
+    dayOfWeekFilter = parseDayOfWeek(message);
+
+    // Log để debug
+    console.log(`🔍 [parseSearchQuery] Parsed query:`, {
+        message,
+        category,
+        radius,
+        searchType,
+        dayOfWeekFilter
+    });
+
+    return { category, radius, searchType, dayOfWeekFilter };
 }
 
 /**
@@ -296,7 +512,12 @@ async function tryExpoGeocoding(coords) {
         }
         return false;
     } catch (error) {
-        console.error("Expo-location geocoding error:", error);
+        // Không log error khi service unavailable để tránh spam console
+        // Chỉ log khi là lỗi khác (không phải UNAVAILABLE)
+        const errorMessage = error?.message || "";
+        if (!errorMessage.includes("UNAVAILABLE") && !errorMessage.includes("rejected")) {
+            console.warn("⚠️ Expo-location geocoding error:", error);
+        }
         return false;
     }
 }
@@ -627,7 +848,7 @@ async function getLiveEventsNearbyDirect(center, radiusKm = 5, categoryFilter = 
  * Lấy TẤT CẢ sự kiện (đang diễn ra + sắp diễn ra) TRỰC TIẾP từ Firestore
  * Dùng cho Chat AI để tìm kiếm đầy đủ
  */
-async function getAllEventsNearbyDirect(center, radiusKm = 5, categoryFilter = null) {
+async function getAllEventsNearbyDirect(center, radiusKm = 5, categoryFilter = null, dayOfWeekFilter = null) {
     try {
         const centerLoc = [center.latitude, center.longitude];
 
@@ -635,7 +856,8 @@ async function getAllEventsNearbyDirect(center, radiusKm = 5, categoryFilter = n
             center: { lat: center.latitude, lng: center.longitude },
             centerLoc,
             radiusKm,
-            categoryFilter
+            categoryFilter,
+            dayOfWeekFilter
         });
         const bounds = geohashQueryBounds(centerLoc, radiusKm * 1000);
         const col = collection(db, "events");
@@ -664,6 +886,13 @@ async function getAllEventsNearbyDirect(center, radiusKm = 5, categoryFilter = n
                 // Chỉ loại bỏ events đã kết thúc (giữ events đang diễn ra và sắp diễn ra)
                 const notEnded = !endAt || endAt.seconds >= now.seconds;
                 if (!notEnded) continue;
+
+                // Filter by day of week (thứ 7, chủ nhật, cuối tuần)
+                if (dayOfWeekFilter && dayOfWeekFilter.length > 0) {
+                    if (!isEventOnDayOfWeek(data, dayOfWeekFilter)) {
+                        continue; // Skip nếu không match với ngày trong tuần được yêu cầu
+                    }
+                }
 
                 // Lấy và validate tọa độ từ location
                 const eventCoords = extractAndValidateCoordinates(data.location, data.title || 'Unknown Event');
@@ -920,7 +1149,7 @@ function isLocationQuestion(message) {
  * Tìm kiếm dữ liệu dựa trên query - SỬ DỤNG FUNCTIONS TRỰC TIẾP
  */
 async function performSearch(parsedQuery, userLocation) {
-    const { category, radius, searchType } = parsedQuery;
+    const { category, radius, searchType, dayOfWeekFilter } = parsedQuery;
 
     if (!userLocation) {
         return {
@@ -991,12 +1220,14 @@ async function performSearch(parsedQuery, userLocation) {
             console.log(`🔍 [performSearch] Searching events with:`, {
                 center: { lat: userLocation.latitude, lng: userLocation.longitude },
                 radius,
-                category: category || "all"
+                category: category || "all",
+                dayOfWeekFilter: dayOfWeekFilter || "all"
             });
             const events = await getAllEventsNearbyDirect(
                 userLocation,
                 radius,
-                category || null
+                category || null,
+                dayOfWeekFilter || null
             );
             console.log(`✅ [performSearch] Found ${events.length} events`);
 
@@ -1124,16 +1355,22 @@ function formatSearchResults(searchData) {
         return distA - distB;
     });
 
-    for (let i = 0; i < Math.min(sortedResults.length, 10); i++) {
+    for (let i = 0; i < Math.min(sortedResults.length, 20); i++) {
         const item = sortedResults[i];
         const typeLabel = item.type === "event" ? "🎉 Sự kiện" : "📍 Địa điểm";
-        text += `${i + 1}. **${item.name}**\n`;
-        text += `   ${typeLabel} | 📏 Khoảng cách: ${item.distance} | 🏷️ ${item.category}\n`;
-        text += `   📍 Địa chỉ: ${item.address}\n\n`;
+        const eventName = item.name || "Chưa có tên";
+        const distance = item.distance || "Chưa xác định";
+        const category = item.category || "Chưa có danh mục";
+        const address = item.address || "Chưa có địa chỉ";
+
+        // Đảm bảo format đầy đủ và rõ ràng
+        text += `${i + 1}. **${eventName}**\n`;
+        text += `   ${typeLabel} | 📏 Khoảng cách: ${distance} | 🏷️ Thể loại: ${category}\n`;
+        text += `   📍 Địa chỉ: ${address}\n\n`;
     }
 
-    if (searchData.count > 10) {
-        text += `\n... và còn ${searchData.count - 10} kết quả khác. Bạn có thể xem thêm trên bản đồ hoặc danh sách sự kiện.`;
+    if (searchData.count > 20) {
+        text += `\n... và còn ${searchData.count - 20} kết quả khác. Bạn có thể xem thêm trên bản đồ hoặc danh sách sự kiện.`;
     }
 
     return text;
@@ -1146,12 +1383,18 @@ function formatSearchResults(searchData) {
  * @returns {Promise<{text: string, searchResults?: any}>} - Phản hồi từ AI và kết quả tìm kiếm (nếu có)
  */
 export async function sendMessageToGemini(message, conversationHistory = []) {
+    // Khai báo các biến ở đầu function để đảm bảo chúng luôn tồn tại trong catch block
+    let hasSearchIntent = false;
+    let searchData = null;
+    let searchResults = null;
+    let parsedQuery = null;
+
     try {
         // Kiểm tra xem có phải câu hỏi về vị trí hiện tại không
         const isLocationQ = isLocationQuestion(message);
 
         // Parse query để xem có phải là câu hỏi tìm kiếm không
-        const parsedQuery = parseSearchQuery(message);
+        parsedQuery = parseSearchQuery(message);
         // Phát hiện search intent: có category, có searchType, hoặc có từ khóa về tìm kiếm gần
         const lowerMessage = message.toLowerCase();
         const hasNearbyKeywords = lowerMessage.includes("gần") ||
@@ -1160,7 +1403,7 @@ export async function sendMessageToGemini(message, conversationHistory = []) {
             lowerMessage.includes("around") ||
             lowerMessage.includes("ở đâu") ||
             lowerMessage.includes("where");
-        const hasSearchIntent = parsedQuery.category ||
+        hasSearchIntent = parsedQuery.category ||
             parsedQuery.searchType ||
             hasNearbyKeywords;
 
@@ -1182,9 +1425,6 @@ export async function sendMessageToGemini(message, conversationHistory = []) {
                 console.warn(`⚠️ [sendMessageToGemini] Failed to get location`);
             }
         }
-
-        let searchResults = null;
-        let searchData = null;
 
         // Nếu có intent tìm kiếm, thực hiện tìm kiếm trước (LUÔN dùng vị trí hiện tại)
         if (hasSearchIntent) {
@@ -1261,9 +1501,11 @@ export async function sendMessageToGemini(message, conversationHistory = []) {
                 `4. Nếu khoảng cách hiển thị là "2.3km" thì bạn phải nói "2.3km", KHÔNG được nói "2km" hay "khoảng 2km"\n` +
                 `5. Nếu khoảng cách hiển thị là "350m" thì bạn phải nói "350m", KHÔNG được nói "gần đây" hay "cách vài trăm mét"\n` +
                 `6. Sắp xếp kết quả theo khoảng cách từ gần đến xa khi liệt kê\n` +
-                `7. Mỗi kết quả phải có: tên, khoảng cách CHÍNH XÁC (copy nguyên từ kết quả), loại (sự kiện/địa điểm), danh mục, địa chỉ\n` +
-                `8. Trả lời bằng tiếng Việt, thân thiện, và nhắc rằng kết quả được tìm từ vị trí hiện tại của họ\n` +
-                `9. **CỰC KỲ QUAN TRỌNG**: Nếu bạn thấy khoảng cách là "2m" hoặc rất nhỏ (< 10m) nhưng người dùng ở xa, CÓ THỂ là lỗi trong tính toán - nhưng BẠN VẪN PHẢI hiển thị đúng giá trị từ kết quả, KHÔNG tự sửa`;
+                `7. **CỰC KỲ QUAN TRỌNG - Mỗi kết quả PHẢI có ĐẦY ĐỦ**: tên, khoảng cách CHÍNH XÁC (copy nguyên từ kết quả), loại (sự kiện/địa điểm), danh mục (category), địa chỉ (address). KHÔNG được bỏ sót bất kỳ thông tin nào\n` +
+                `8. **KHÔNG được cắt ngắn hoặc làm tròn** - phải hiển thị TẤT CẢ các sự kiện với ĐẦY ĐỦ thông tin. Nếu có 10 sự kiện thì phải liệt kê đầy đủ 10 sự kiện, không được chỉ hiển thị một vài sự kiện đầu\n` +
+                `9. **ĐẢM BẢO MỖI SỰ KIỆN CÓ ĐẦY ĐỦ**: Tên sự kiện, khoảng cách, category, và địa chỉ. Nếu thiếu bất kỳ thông tin nào thì bạn đang làm sai\n` +
+                `10. Trả lời bằng tiếng Việt, thân thiện, và nhắc rằng kết quả được tìm từ vị trí hiện tại của họ\n` +
+                `11. **CỰC KỲ QUAN TRỌNG**: Nếu bạn thấy khoảng cách là "2m" hoặc rất nhỏ (< 10m) nhưng người dùng ở xa, CÓ THỂ là lỗi trong tính toán - nhưng BẠN VẪN PHẢI hiển thị đúng giá trị từ kết quả, KHÔNG tự sửa`;
         }
 
         // Xây dựng lịch sử cuộc trò chuyện
@@ -1302,7 +1544,7 @@ export async function sendMessageToGemini(message, conversationHistory = []) {
                 temperature: 0.7,
                 topK: 40,
                 topP: 0.95,
-                maxOutputTokens: 1024,
+                maxOutputTokens: 4096, // Tăng lên để hiển thị đầy đủ tất cả thông tin cho nhiều sự kiện
             },
             safetySettings: [
                 {
@@ -1348,6 +1590,16 @@ export async function sendMessageToGemini(message, conversationHistory = []) {
         } else if (data.candidates?.[0]?.finishReason === "SAFETY") {
             aiResponse = "Xin lỗi, tôi không thể trả lời câu hỏi này do nội dung không phù hợp. Vui lòng thử câu hỏi khác.";
         } else {
+            // Nếu không có text từ AI nhưng có search results, vẫn trả về kết quả tìm kiếm
+            if (hasSearchIntent && searchData?.success) {
+                return {
+                    text: searchResults || "Đã tìm thấy kết quả nhưng không thể tạo phản hồi tự nhiên. Kết quả ở trên.",
+                    searchResults: searchData.results,
+                    searchType: parsedQuery?.searchType,
+                    radius: parsedQuery?.radius,
+                };
+            }
+            // Chỉ throw error nếu không có search results
             throw new Error("Không nhận được phản hồi từ AI");
         }
 
@@ -1356,26 +1608,51 @@ export async function sendMessageToGemini(message, conversationHistory = []) {
             return {
                 text: aiResponse,
                 searchResults: searchData.results,
-                searchType: parsedQuery.searchType,
-                radius: parsedQuery.radius,
+                searchType: parsedQuery?.searchType,
+                radius: parsedQuery?.radius,
             };
         }
 
         return { text: aiResponse };
     } catch (error) {
-        console.error("Gemini API error:", error);
-
-        // Nếu có kết quả tìm kiếm nhưng AI lỗi, vẫn trả về kết quả tìm kiếm
+        // Nếu có kết quả tìm kiếm nhưng AI lỗi, vẫn trả về kết quả tìm kiếm (KHÔNG throw error)
         if (hasSearchIntent && searchData?.success) {
+            // Chỉ log warning thay vì error để không trigger error banner
+            console.warn("⚠️ [sendMessageToGemini] AI response failed but returning search results:", error?.message);
             return {
                 text: searchResults || "Đã tìm thấy kết quả nhưng không thể tạo phản hồi tự nhiên. Kết quả ở trên.",
                 searchResults: searchData.results,
-                searchType: parsedQuery.searchType,
-                radius: parsedQuery.radius,
+                searchType: parsedQuery?.searchType,
+                radius: parsedQuery?.radius,
             };
         }
 
-        throw error;
+        // Chỉ log error nếu thực sự không có kết quả để trả về
+        console.error("Gemini API error:", error);
+
+        // Tạo error message thân thiện dựa trên loại lỗi
+        const errorMessage = error?.message || "";
+        let friendlyError = "";
+
+        if (errorMessage.includes("network") || errorMessage.includes("fetch") || errorMessage.includes("connection")) {
+            friendlyError = "Oops! 😅 Mình đang gặp vấn đề với kết nối mạng. Bạn kiểm tra lại WiFi/4G giúp mình nha, rồi thử lại sau vài giây nhé! 📶✨";
+        } else if (errorMessage.includes("timeout")) {
+            friendlyError = "Hmm, mình đang xử lý hơi lâu quá! ⏰ Bạn thử hỏi lại mình một lần nữa được không? Mình sẽ cố gắng trả lời nhanh hơn! 💪";
+        } else if (errorMessage.includes("API") || errorMessage.includes("HTTP") || errorMessage.includes("400") || errorMessage.includes("500")) {
+            friendlyError = "Xin lỗi bạn nhé! 😔 Mình đang gặp chút vấn đề kỹ thuật. Bạn thử lại sau một chút được không? Mình sẽ cố gắng sửa lại ngay! 🔧💜";
+        } else {
+            // Lỗi không xác định hoặc câu lệnh không xử lý được
+            friendlyError = "Xin lỗi bạn nhé! 😅 Mình chưa hiểu rõ yêu cầu này của bạn. Bạn có thể:\n\n" +
+                "• Hỏi mình về sự kiện gần đây (ví dụ: \"Sự kiện cuối tuần\", \"Sự kiện gaming gần đây\")\n" +
+                "• Hỏi về vị trí hiện tại của bạn\n" +
+                "• Hoặc hỏi mình về chức năng của app\n\n" +
+                "Mình sẽ cố gắng giúp bạn tốt nhất có thể! 💜✨";
+        }
+
+        // Tạo một error object với message thân thiện
+        const friendlyErrorObj = new Error(friendlyError);
+        friendlyErrorObj.originalError = error;
+        throw friendlyErrorObj;
     }
 }
 

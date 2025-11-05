@@ -66,6 +66,8 @@ export default function MapScreen({ navigation, route }) {
 
   const mapRef = useRef(null);
   const hasAutoOpenedDetail = useRef(false);
+  const lastAutoOpenEventId = useRef(null); // Track last event ID that auto-opened
+  const pendingAutoOpen = useRef(null); // Track pending auto-open event ID
   const markerRefs = useRef({});
   const animationTimeouts = useRef([]);
 
@@ -255,15 +257,18 @@ export default function MapScreen({ navigation, route }) {
   const handleCloseDetailModal = useCallback(() => {
     setShowDetailModal(false);
     setSelectedItem(null);
+    pendingAutoOpen.current = null; // Clear pending flag
 
     if (hasAutoOpenedDetail.current) {
       setFocusedItemId(null);
       hasAutoOpenedDetail.current = false;
+      lastAutoOpenEventId.current = null; // Reset tracking
 
       if (route?.params?.autoOpenDetail) {
         navigation.setParams({
           autoOpenDetail: false,
           focusEventId: null,
+          eventData: null, // Clear eventData too
         });
       }
     }
@@ -374,7 +379,11 @@ export default function MapScreen({ navigation, route }) {
 
               if (isMounted) {
                 setFocusedItemId(targetEventId);
-                hasAutoOpenedDetail.current = false;
+                // Reset flags để cho phép auto-open modal cho event mới
+                if (targetEventId !== lastAutoOpenEventId.current) {
+                  hasAutoOpenedDetail.current = false;
+                  lastAutoOpenEventId.current = null;
+                }
               }
             }
           }
@@ -426,35 +435,85 @@ export default function MapScreen({ navigation, route }) {
     };
   }, [route?.params, getUserLocation, fetchNearbyItems, showMarkerCallout]);
 
+  // Reset hasAutoOpenedDetail khi route params thay đổi (navigate từ chat)
   useEffect(() => {
-    if (
-      !loading &&
-      focusedItemId &&
-      !hasAutoOpenedDetail.current &&
-      route?.params?.autoOpenDetail
-    ) {
-      // First check if we have preloaded event data
-      const preloadedEventData = route.params.eventData;
+    const currentFocusEventId = route?.params?.focusEventId;
+    const currentAutoOpen = route?.params?.autoOpenDetail;
 
-      // Try to find the event in loaded events
-      const focusedEvent = events.find((e) => e.id === focusedItemId);
+    // Nếu có autoOpenDetail mới và focusEventId khác với lần trước, reset flag
+    if (currentAutoOpen && currentFocusEventId && currentFocusEventId !== lastAutoOpenEventId.current) {
+      console.log("🔄 [MapScreen] Reset hasAutoOpenedDetail for new navigation:", currentFocusEventId);
+      hasAutoOpenedDetail.current = false;
+      lastAutoOpenEventId.current = currentFocusEventId;
+    }
+  }, [route?.params?.autoOpenDetail, route?.params?.focusEventId]);
 
-      // Use either the found event or preloaded data
-      if (focusedEvent || preloadedEventData) {
+  // Auto-open detail modal - ưu tiên eventData từ params
+  useEffect(() => {
+    // Kiểm tra nếu có autoOpenDetail từ route params
+    if (!route?.params?.autoOpenDetail) {
+      return;
+    }
+
+    // Lấy focusEventId từ route params (ưu tiên) hoặc từ state
+    const targetEventId = route?.params?.focusEventId || focusedItemId;
+
+    if (!targetEventId) {
+      return;
+    }
+
+    // Nếu đã mở modal cho event này rồi, không mở lại
+    if (hasAutoOpenedDetail.current && lastAutoOpenEventId.current === targetEventId) {
+      return;
+    }
+
+    // Đảm bảo focusedItemId được set từ route params
+    if (route?.params?.focusEventId && route.params.focusEventId !== focusedItemId) {
+      setFocusedItemId(route.params.focusEventId);
+      // useEffect sẽ chạy lại sau khi focusedItemId được cập nhật
+      return;
+    }
+
+    // First check if we have preloaded event data from navigation params
+    const preloadedEventData = route.params.eventData;
+
+    if (preloadedEventData) {
+      // Nếu có eventData sẵn, mở detail modal ngay lập tức (không cần đợi loading)
+      console.log("✅ [MapScreen] Opening detail modal with preloaded eventData:", preloadedEventData.id);
+      hasAutoOpenedDetail.current = true;
+      lastAutoOpenEventId.current = targetEventId;
+      pendingAutoOpen.current = targetEventId; // Set pending flag
+
+      // Set selectedItem trước khi mở modal để đảm bảo DetailModal có eventId
+      setSelectedItem({
+        id: targetEventId,
+        type: "event",
+      });
+
+      const markerKey = `event-${targetEventId}`;
+      showMarkerCallout(markerKey);
+      return; // useEffect sẽ handle việc mở modal sau khi selectedItem được set
+    }
+
+    // Nếu không có preloaded data, đợi events array load xong
+    if (!loading && events.length > 0) {
+      const focusedEvent = events.find((e) => e.id === targetEventId);
+
+      if (focusedEvent) {
+        console.log("✅ [MapScreen] Opening detail modal with event from array:", focusedEvent.id);
         hasAutoOpenedDetail.current = true;
+        lastAutoOpenEventId.current = targetEventId;
+        pendingAutoOpen.current = targetEventId; // Set pending flag
 
+        // Set selectedItem trước khi mở modal
         setSelectedItem({
-          id: focusedItemId,
+          id: targetEventId,
           type: "event",
         });
 
-        const markerKey = `event-${focusedItemId}`;
+        const markerKey = `event-${targetEventId}`;
         showMarkerCallout(markerKey);
-
-        const timeout = setTimeout(() => {
-          setShowDetailModal(true);
-        }, ANIMATION_DELAYS.MODAL);
-        animationTimeouts.current.push(timeout);
+        // useEffect sẽ handle việc mở modal sau khi selectedItem được set
       }
     }
   }, [
@@ -462,45 +521,33 @@ export default function MapScreen({ navigation, route }) {
     events,
     focusedItemId,
     route?.params?.autoOpenDetail,
+    route?.params?.focusEventId,
     route?.params?.eventData,
     showMarkerCallout,
   ]);
 
-  // Auto-open detail modal
+  // Auto-open modal khi selectedItem đã được set và có pendingAutoOpen
   useEffect(() => {
     if (
-      !loading &&
-      events.length > 0 &&
-      focusedItemId &&
-      !hasAutoOpenedDetail.current &&
-      route?.params?.autoOpenDetail
+      pendingAutoOpen.current &&
+      selectedItem &&
+      selectedItem.id === pendingAutoOpen.current &&
+      selectedItem.type === "event" &&
+      !showDetailModal
     ) {
-      const focusedEvent = events.find((e) => e.id === focusedItemId);
+      console.log("✅ [MapScreen] selectedItem ready, opening modal:", selectedItem.id);
+      pendingAutoOpen.current = null; // Clear pending flag
 
-      if (focusedEvent) {
-        hasAutoOpenedDetail.current = true;
-
-        setSelectedItem({
-          id: focusedItemId,
-          type: "event",
-        });
-
-        const markerKey = `event-${focusedItemId}`;
-        showMarkerCallout(markerKey);
-
-        const timeout = setTimeout(() => {
+      // Đợi một chút để đảm bảo DetailModal đã mount và sẵn sàng
+      const timeout1 = setTimeout(() => {
+        const timeout2 = setTimeout(() => {
           setShowDetailModal(true);
-        }, ANIMATION_DELAYS.MODAL);
-        animationTimeouts.current.push(timeout);
-      }
+        }, 100);
+        animationTimeouts.current.push(timeout2);
+      }, ANIMATION_DELAYS.MODAL + 300);
+      animationTimeouts.current.push(timeout1);
     }
-  }, [
-    loading,
-    events,
-    focusedItemId,
-    route?.params?.autoOpenDetail,
-    showMarkerCallout,
-  ]);
+  }, [selectedItem, showDetailModal]);
 
   // Fetch on filter change
   useEffect(() => {
@@ -746,7 +793,7 @@ export default function MapScreen({ navigation, route }) {
                             style={[
                               styles.categoryChip,
                               selectedCategories.events.length === 0 &&
-                                styles.categoryChipActive,
+                              styles.categoryChipActive,
                             ]}
                             onPress={() =>
                               setSelectedCategories((prev) => ({
@@ -760,7 +807,7 @@ export default function MapScreen({ navigation, route }) {
                               style={[
                                 styles.categoryText,
                                 selectedCategories.events.length === 0 &&
-                                  styles.categoryTextActive,
+                                styles.categoryTextActive,
                               ]}
                             >
                               Tất cả
@@ -772,7 +819,7 @@ export default function MapScreen({ navigation, route }) {
                               style={[
                                 styles.categoryChip,
                                 selectedCategories.events.includes(category) &&
-                                  styles.categoryChipActive,
+                                styles.categoryChipActive,
                               ]}
                               onPress={() => toggleCategory("events", category)}
                               activeOpacity={0.7}
@@ -807,7 +854,7 @@ export default function MapScreen({ navigation, route }) {
                             style={[
                               styles.categoryChip,
                               selectedCategories.locations.length === 0 &&
-                                styles.categoryChipActive,
+                              styles.categoryChipActive,
                             ]}
                             onPress={() =>
                               setSelectedCategories((prev) => ({
@@ -821,7 +868,7 @@ export default function MapScreen({ navigation, route }) {
                               style={[
                                 styles.categoryText,
                                 selectedCategories.locations.length === 0 &&
-                                  styles.categoryTextActive,
+                                styles.categoryTextActive,
                               ]}
                             >
                               Tất cả
