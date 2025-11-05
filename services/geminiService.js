@@ -1,5 +1,6 @@
 // services/geminiService.js
 import * as Location from "expo-location";
+import { Linking, Platform } from "react-native";
 import {
     collection,
     getDocs,
@@ -301,18 +302,33 @@ async function tryExpoGeocoding(coords) {
 }
 
 /**
+ * Mở cài đặt vị trí trên thiết bị
+ */
+async function openLocationSettings() {
+    try {
+        if (Platform.OS === "ios") {
+            await Linking.openURL("app-settings:");
+        } else {
+            await Linking.openSettings();
+        }
+    } catch (error) {
+        console.error("❌ [openLocationSettings] Error opening settings:", error);
+        // Fallback: mở cài đặt chung
+        try {
+            await Linking.openSettings();
+        } catch (fallbackError) {
+            console.error("❌ [openLocationSettings] Fallback also failed:", fallbackError);
+        }
+    }
+}
+
+/**
  * Lấy vị trí hiện tại của người dùng (bao gồm địa chỉ) - Sử dụng Google Cloud API với fallback
+ * @returns {Promise<{coords: object, error: string, needsSettings: boolean, needsPermission: boolean} | null>}
  */
 async function getCurrentLocation() {
     try {
         console.log("📍 [getCurrentLocation] Bắt đầu lấy vị trí...");
-
-        // Kiểm tra xem location services có sẵn không
-        const isLocationEnabled = await Location.hasServicesEnabledAsync();
-        if (!isLocationEnabled) {
-            console.log("❌ [getCurrentLocation] Location services chưa được bật");
-            return null;
-        }
 
         // Kiểm tra quyền hiện tại trước
         let { status } = await Location.getForegroundPermissionsAsync();
@@ -325,30 +341,98 @@ async function getCurrentLocation() {
 
             if (status !== "granted") {
                 console.log("❌ [getCurrentLocation] Người dùng từ chối quyền truy cập vị trí");
-                return null;
+                return {
+                    coords: null,
+                    error: "permission_denied",
+                    needsSettings: true,
+                    needsPermission: true,
+                    message: "Vui lòng cho phép ứng dụng truy cập vị trí trong cài đặt để tôi có thể tìm kiếm địa điểm và sự kiện gần bạn."
+                };
             }
         }
 
+        // Kiểm tra xem location services có sẵn không
+        let isLocationEnabled = await Location.hasServicesEnabledAsync();
+
         // Lấy vị trí với timeout và error handling tốt hơn
+        // Nếu đã có quyền nhưng location services chưa bật, việc gọi getCurrentPositionAsync
+        // với accuracy cao sẽ TỰ ĐỘNG hiển thị dialog hệ thống yêu cầu bật vị trí (như trong ảnh)
+        // Chúng ta sẽ đợi người dùng phản hồi dialog (bật hoặc từ chối)
         let location;
+        // Tăng timeout nếu location chưa bật để đợi người dùng bật qua dialog hệ thống
+        const timeoutDuration = isLocationEnabled ? 10000 : 20000; // Tăng lên 20s để đợi người dùng bật
+
         try {
             location = await Location.getCurrentPositionAsync({
                 accuracy: Location.Accuracy.High,
-                timeout: 10000, // 10 giây timeout
+                timeout: timeoutDuration,
             });
+
+            // Nếu thành công, kiểm tra lại xem location đã được bật chưa (trong trường hợp người dùng bật qua dialog)
+            if (location?.coords) {
+                const currentLocationEnabled = await Location.hasServicesEnabledAsync();
+                if (!currentLocationEnabled) {
+                    // Nếu vẫn chưa bật, có thể người dùng đã bật tạm thời rồi tắt lại
+                    // Nhưng vì đã có location, ta vẫn tiếp tục xử lý
+                    console.log("⚠️ [getCurrentLocation] Có vị trí nhưng location services có thể đã tắt lại");
+                }
+            }
         } catch (locationError) {
             // Xử lý các lỗi cụ thể về location
-            if (locationError.message && locationError.message.includes("location is unavailable")) {
-                console.log("❌ [getCurrentLocation] Location services không khả dụng");
-                return null;
+            const errorMessage = locationError?.message || "";
+
+            // Kiểm tra lại xem location services đã được bật chưa (có thể người dùng đã bật trong dialog)
+            const currentLocationEnabled = await Location.hasServicesEnabledAsync();
+
+            if (errorMessage.includes("location is unavailable") || errorMessage.includes("location is disabled")) {
+                // Kiểm tra lại xem location services đã được bật chưa (có thể người dùng đã bật trong dialog)
+                if (currentLocationEnabled) {
+                    // Nếu location đã được bật, thử lại một lần nữa
+                    console.log("✅ [getCurrentLocation] Location services đã được bật, thử lại...");
+                    try {
+                        location = await Location.getCurrentPositionAsync({
+                            accuracy: Location.Accuracy.High,
+                            timeout: 10000,
+                        });
+                        // Nếu thành công, tiếp tục xử lý bình thường
+                        console.log("✅ [getCurrentLocation] Đã lấy được vị trí sau khi bật location services");
+                    } catch (retryError) {
+                        console.log("❌ [getCurrentLocation] Vẫn không lấy được vị trí sau khi bật:", retryError?.message);
+                        return {
+                            coords: null,
+                            error: "location_unavailable",
+                            needsSettings: true,
+                            needsPermission: false,
+                            message: "Không thể lấy vị trí. Vui lòng kiểm tra quyền truy cập và bật tính năng định vị để tôi có thể thực hiện các yêu cầu của bạn."
+                        };
+                    }
+                } else {
+                    // Nếu location services vẫn chưa bật sau khi catch error, nghĩa là người dùng đã từ chối hoặc timeout
+                    console.log("❌ [getCurrentLocation] Location services chưa được bật - người dùng đã từ chối hoặc timeout");
+                    return {
+                        coords: null,
+                        error: "location_disabled",
+                        needsSettings: true,
+                        needsPermission: false,
+                        message: "Không thể lấy vị trí. Vui lòng kiểm tra quyền truy cập và bật tính năng định vị để tôi có thể thực hiện các yêu cầu của bạn."
+                    };
+                }
+            } else {
+                // Nếu là lỗi khác, throw lại
+                throw locationError;
             }
-            throw locationError; // Re-throw nếu là lỗi khác
         }
 
         // Kiểm tra tính hợp lệ của tọa độ
-        if (!location || !location.coords) {
+        if (!location?.coords) {
             console.log("❌ [getCurrentLocation] Không nhận được tọa độ hợp lệ");
-            return null;
+            return {
+                coords: null,
+                error: "invalid_coords",
+                needsSettings: false,
+                needsPermission: false,
+                message: "Không thể lấy thông tin vị trí hợp lệ."
+            };
         }
 
         const coords = {
@@ -359,7 +443,13 @@ async function getCurrentLocation() {
         // Validate tọa độ
         if (!isValidCoordinate(coords.latitude, coords.longitude)) {
             console.log("❌ [getCurrentLocation] Tọa độ không hợp lệ:", coords);
-            return null;
+            return {
+                coords: null,
+                error: "invalid_coords",
+                needsSettings: false,
+                needsPermission: false,
+                message: "Tọa độ vị trí không hợp lệ."
+            };
         }
 
         console.log("✅ [getCurrentLocation] GPS coordinates:", coords.latitude, coords.longitude);
@@ -380,14 +470,26 @@ async function getCurrentLocation() {
         }
 
         console.log("📍 [getCurrentLocation] Final address:", coords.address);
-        return coords;
+        return {
+            coords: coords,
+            error: null,
+            needsSettings: false,
+            needsPermission: false,
+            message: null
+        };
     } catch (error) {
         console.error("❌ [getCurrentLocation] Error:", error);
         // Log chi tiết lỗi để debug
         if (error.message) {
             console.error("❌ [getCurrentLocation] Error message:", error.message);
         }
-        return null;
+        return {
+            coords: null,
+            error: "unknown_error",
+            needsSettings: false,
+            needsPermission: false,
+            message: "Đã xảy ra lỗi khi lấy vị trí. Vui lòng thử lại sau."
+        };
     }
 }
 
@@ -1063,11 +1165,14 @@ export async function sendMessageToGemini(message, conversationHistory = []) {
             hasNearbyKeywords;
 
         // Lấy vị trí hiện tại nếu cần (cho câu hỏi về vị trí hoặc tìm kiếm)
+        let locationResult = null;
         let userLocation = null;
         if (isLocationQ || hasSearchIntent) {
             console.log(`📍 [sendMessageToGemini] Requesting location... isLocationQ: ${isLocationQ}, hasSearchIntent: ${hasSearchIntent}`);
-            userLocation = await getCurrentLocation();
-            if (userLocation) {
+            locationResult = await getCurrentLocation();
+
+            if (locationResult?.coords) {
+                userLocation = locationResult.coords;
                 console.log(`✅ [sendMessageToGemini] Location retrieved successfully:`, {
                     address: userLocation.address,
                     lat: userLocation.latitude,
@@ -1084,9 +1189,15 @@ export async function sendMessageToGemini(message, conversationHistory = []) {
         // Nếu có intent tìm kiếm, thực hiện tìm kiếm trước (LUÔN dùng vị trí hiện tại)
         if (hasSearchIntent) {
             if (!userLocation) {
-                // Nếu không lấy được vị trí, trả về lỗi ngay
+                // Nếu không lấy được vị trí, trả về thông báo với flag để mở settings
+                const locationMessage = locationResult?.message ||
+                    "Tôi không thể lấy vị trí hiện tại của bạn. Vui lòng cho phép ứng dụng truy cập vị trí trong cài đặt để tôi có thể tìm kiếm địa điểm và sự kiện gần bạn.";
+
                 return {
-                    text: "Tôi không thể lấy vị trí hiện tại của bạn. Vui lòng cho phép ứng dụng truy cập vị trí trong cài đặt để tôi có thể tìm kiếm địa điểm và sự kiện gần bạn.",
+                    text: locationMessage,
+                    needsSettings: locationResult?.needsSettings || false,
+                    needsPermission: locationResult?.needsPermission || false,
+                    locationError: locationResult?.error || "unknown"
                 };
             }
             searchData = await performSearch(parsedQuery, userLocation);
@@ -1121,12 +1232,18 @@ export async function sendMessageToGemini(message, conversationHistory = []) {
         } else if (isLocationQ && !userLocation) {
             // Nếu hỏi về vị trí nhưng không lấy được
             console.error(`❌ [sendMessageToGemini] Location question detected but location is null`);
+            const locationMessage = locationResult?.message ||
+                "Xin lỗi, tôi không thể lấy vị trí hiện tại của bạn từ ứng dụng. Vui lòng:\n\n" +
+                "1. Kiểm tra xem bạn đã cho phép ứng dụng truy cập vị trí trong cài đặt điện thoại chưa\n" +
+                "2. Đảm bảo GPS/Wifi đã được bật\n" +
+                "3. Thử lại sau vài giây\n\n" +
+                "Nếu vấn đề vẫn tiếp tục, bạn có thể cung cấp địa chỉ hoặc tọa độ hiện tại để tôi có thể giúp bạn tìm kiếm địa điểm và sự kiện gần đó.";
+
             return {
-                text: "Xin lỗi, tôi không thể lấy vị trí hiện tại của bạn từ ứng dụng. Vui lòng:\n\n" +
-                    "1. Kiểm tra xem bạn đã cho phép ứng dụng truy cập vị trí trong cài đặt điện thoại chưa\n" +
-                    "2. Đảm bảo GPS/Wifi đã được bật\n" +
-                    "3. Thử lại sau vài giây\n\n" +
-                    "Nếu vấn đề vẫn tiếp tục, bạn có thể cung cấp địa chỉ hoặc tọa độ hiện tại để tôi có thể giúp bạn tìm kiếm địa điểm và sự kiện gần đó.",
+                text: locationMessage,
+                needsSettings: locationResult?.needsSettings || false,
+                needsPermission: locationResult?.needsPermission || false,
+                locationError: locationResult?.error || "unknown"
             };
         }
 
@@ -1282,5 +1399,5 @@ export async function getEventsContext() {
     }
 }
 
-// Export categories để các file khác có thể sử dụng
-export { LOCATION_CATEGORIES, EVENT_CATEGORIES };
+// Export categories và hàm mở settings để các file khác có thể sử dụng
+export { LOCATION_CATEGORIES, EVENT_CATEGORIES, openLocationSettings };
